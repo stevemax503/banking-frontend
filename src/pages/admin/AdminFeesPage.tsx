@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 import { StyledSelect } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
-import { adminApiErrorMessage, decimalFieldOrZero } from '@/lib/adminApiErrors'
+import { adminApiErrorMessage, buildComplianceFeePayload } from '@/lib/adminApiErrors'
 import { fromAdminListResponse } from '@/lib/adminList'
 import { cn } from '@/utils/cn'
 
@@ -230,7 +230,7 @@ export default function AdminFeesPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-compliance-fee-lines'] })
       void queryClient.invalidateQueries({ queryKey: ['admin-pending-compliance-sessions'] })
       setAddingCompliance(false)
-      toast.success('Fee line created. Open pending sessions will include this fee.')
+      toast.success('Fee line created. Active compliance sessions will pick it up when possible.')
     },
     onError: (err: unknown) => toast.error(adminApiErrorMessage(err, 'Could not create line.')),
   })
@@ -313,23 +313,20 @@ export default function AdminFeesPage() {
     return base
   }
 
-  const buildCompliancePayload = () => {
-    const code = slugifyCode(complianceForm.code, complianceForm.name)
-    const user =
-      complianceForm.scope === 'user' && complianceForm.user_id ? complianceForm.user_id : null
-    return {
-      name: complianceForm.name.trim(),
-      code,
-      user,
+  const buildCompliancePayload = () =>
+    buildComplianceFeePayload({
+      scope: complianceForm.scope,
+      user_id: complianceForm.user_id,
+      name: complianceForm.name,
+      code: slugifyCode(complianceForm.code, complianceForm.name),
       applies_to: complianceForm.applies_to,
-      min_principal_threshold: decimalFieldOrZero(complianceForm.min_principal_threshold),
-      flat_amount: decimalFieldOrZero(complianceForm.flat_amount),
+      min_principal_threshold: complianceForm.min_principal_threshold,
+      flat_amount: complianceForm.flat_amount,
       percentage: pctToDecimal(complianceForm.percentage_percent),
-      min_amount: decimalFieldOrZero(complianceForm.min_amount),
-      max_amount: decimalFieldOrZero(complianceForm.max_amount),
+      min_amount: complianceForm.min_amount,
+      max_amount: complianceForm.max_amount,
       is_active: complianceForm.is_active,
-    } as Record<string, unknown>
-  }
+    })
 
   const openEditCompliance = (row: ComplianceFeeLineRow) => {
     setEditingCompliance(row)

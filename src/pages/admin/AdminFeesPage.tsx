@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 import { StyledSelect } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
+import { adminApiErrorMessage, decimalFieldOrZero } from '@/lib/adminApiErrors'
 import { fromAdminListResponse } from '@/lib/adminList'
 import { cn } from '@/utils/cn'
 
@@ -231,8 +232,7 @@ export default function AdminFeesPage() {
       setAddingCompliance(false)
       toast.success('Fee line created. Open pending sessions will include this fee.')
     },
-    onError: (err: unknown) =>
-      toast.error((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Could not create line.'),
+    onError: (err: unknown) => toast.error(adminApiErrorMessage(err, 'Could not create line.')),
   })
 
   const updateComplianceMutation = useMutation({
@@ -243,8 +243,7 @@ export default function AdminFeesPage() {
       setEditingCompliance(null)
       toast.success('Fee line saved.')
     },
-    onError: (err: unknown) =>
-      toast.error((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Could not save line.'),
+    onError: (err: unknown) => toast.error(adminApiErrorMessage(err, 'Could not save line.')),
   })
 
   const deleteComplianceMutation = useMutation({
@@ -323,11 +322,11 @@ export default function AdminFeesPage() {
       code,
       user,
       applies_to: complianceForm.applies_to,
-      min_principal_threshold: complianceForm.min_principal_threshold,
-            flat_amount: complianceForm.flat_amount,
+      min_principal_threshold: decimalFieldOrZero(complianceForm.min_principal_threshold),
+      flat_amount: decimalFieldOrZero(complianceForm.flat_amount),
       percentage: pctToDecimal(complianceForm.percentage_percent),
-      min_amount: complianceForm.min_amount,
-      max_amount: complianceForm.max_amount,
+      min_amount: decimalFieldOrZero(complianceForm.min_amount),
+      max_amount: decimalFieldOrZero(complianceForm.max_amount),
       is_active: complianceForm.is_active,
     } as Record<string, unknown>
   }
@@ -1090,7 +1089,9 @@ export default function AdminFeesPage() {
                 <input
                   className="input-field mt-1 text-sm"
                   type="number"
+                  min={0}
                   step="0.01"
+                  placeholder="0"
                   value={complianceForm.min_principal_threshold}
                   onChange={(e) => setComplianceForm((s) => ({ ...s, min_principal_threshold: e.target.value }))}
                 />
@@ -1100,6 +1101,7 @@ export default function AdminFeesPage() {
                 <input
                   className="input-field mt-1 text-sm"
                   type="number"
+                  min={0}
                   step="0.01"
                   value={complianceForm.flat_amount}
                   onChange={(e) => setComplianceForm((s) => ({ ...s, flat_amount: e.target.value }))}
@@ -1110,6 +1112,7 @@ export default function AdminFeesPage() {
                 <input
                   className="input-field mt-1 text-sm"
                   type="number"
+                  min={0}
                   step="0.01"
                   value={complianceForm.percentage_percent}
                   onChange={(e) => setComplianceForm((s) => ({ ...s, percentage_percent: e.target.value }))}
@@ -1120,6 +1123,7 @@ export default function AdminFeesPage() {
                 <input
                   className="input-field mt-1 text-sm"
                   type="number"
+                  min={0}
                   step="0.01"
                   value={complianceForm.min_amount}
                   onChange={(e) => setComplianceForm((s) => ({ ...s, min_amount: e.target.value }))}
@@ -1130,6 +1134,7 @@ export default function AdminFeesPage() {
                 <input
                   className="input-field mt-1 text-sm"
                   type="number"
+                  min={0}
                   step="0.01"
                   value={complianceForm.max_amount}
                   onChange={(e) => setComplianceForm((s) => ({ ...s, max_amount: e.target.value }))}

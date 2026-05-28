@@ -123,10 +123,7 @@ export default function SplitAuthLayout({ children, fitViewport = false }: Split
               : 'relative z-10 mx-auto mt-8 w-full max-w-[440px] space-y-3 text-center lg:hidden'
           }
         >
-          <AuthAnimatedTagline variant="dark" className="auth-tagline-animated mx-auto" />
-          <p className="text-[11px] text-gray-400">
-            © {new Date().getFullYear()} {BANK_NAME}. All rights reserved.
-          </p>
+          {/* Intentionally blank on mobile (no tagline/copyright footer). */}
         </div>
       </div>
     </div>

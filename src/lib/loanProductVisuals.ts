@@ -57,7 +57,7 @@ export const LOAN_CATALOG_LIMITS: Record<
   PERSONAL: { min_amount: '1000', max_amount: '50000', min_term_months: 6, max_term_months: 60 },
   AUTO: { min_amount: '5000', max_amount: '150000', min_term_months: 12, max_term_months: 84 },
   MORTGAGE: { min_amount: '50000', max_amount: '2000000', min_term_months: 60, max_term_months: 360 },
-  BUSINESS: { min_amount: '25000', max_amount: '750000', min_term_months: 12, max_term_months: 120 },
+  BUSINESS: { min_amount: '100000000', max_amount: '5000000000', min_term_months: 12, max_term_months: 180 },
   EDUCATION: { min_amount: '2000', max_amount: '120000', min_term_months: 12, max_term_months: 180 },
 }
 

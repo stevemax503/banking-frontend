@@ -241,16 +241,7 @@ export default function HeroCarousel() {
         />
       ))}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 pb-6 sm:pb-8">
-        {!prefersReducedMotion && !paused ? (
-          <div className="h-0.5 w-48 max-w-[60vw] overflow-hidden rounded-full bg-white/20 sm:w-56">
-            <div
-              key={index}
-              className="animate-hero-progress h-full origin-left rounded-full bg-accent"
-              style={{ animationDuration: `${AUTO_MS}ms` }}
-            />
-          </div>
-        ) : null}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center pb-6 sm:pb-8">
         <div className="pointer-events-auto flex items-center gap-2.5 rounded-full border border-white/10 bg-primary-dark/55 px-3 py-2.5 backdrop-blur-md">
           {HERO_SLIDES.map((slide, i) => (
             <button

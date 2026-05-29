@@ -11,8 +11,11 @@ import {
   AlertTriangle,
   Filter,
   Info,
+  ChevronDown,
 } from 'lucide-react'
 import { adminApi } from '@/api/admin'
+import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
+import { selectShell } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDisplayCurrency } from '@/utils/format'
@@ -130,7 +133,7 @@ function AdminModal({
 
   return (
     <div
-      className="admin-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className="admin-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="admin-modal-title"
@@ -138,7 +141,7 @@ function AdminModal({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[min(92dvh,90vh)] w-full max-w-[min(100%,32rem)] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_24px_48px_-12px_rgba(21,42,30,0.2)]">
+      <div className="flex max-h-[min(92dvh,90vh)] w-full max-w-[min(100%,32rem)] flex-col overflow-hidden rounded-t-2xl border border-gray-200/90 bg-white shadow-[0_24px_48px_-12px_rgba(21,42,30,0.2)] sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-5 py-4">
           <div className="flex min-w-0 items-start gap-3">
             <div
@@ -166,7 +169,7 @@ function AdminModal({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        <div className="flex gap-2 border-t border-gray-100 bg-gray-50/60 px-5 py-4">{footer}</div>
+        <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/60 px-4 py-4 sm:flex-row sm:px-5">{footer}</div>
       </div>
     </div>
   )
@@ -175,6 +178,7 @@ function AdminModal({
 export default function AdminAccountsPage() {
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState(() => searchParams.get('search') ?? '')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('search')
@@ -262,19 +266,31 @@ export default function AdminAccountsPage() {
     return `${depositTarget.owner_name} · ····${depositTarget.account_number.slice(-4)}`
   }, [depositTarget])
 
+  const searchField = (
+    <div className={cn(selectShell, 'relative min-w-0 flex-1 sm:w-64')}>
+      <Search
+        size={16}
+        className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-gray-400"
+        aria-hidden
+      />
+      <input
+        type="search"
+        placeholder="Account number or owner…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full rounded-xl bg-transparent py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none"
+      />
+    </div>
+  )
+
   return (
     <div className="admin-page space-y-6 pb-8">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
+      <section className="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
             <Wallet size={18} strokeWidth={1.75} aria-hidden />
           </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">Accounts</h1>
-            <p className="text-xs text-gray-500">
-              Deposit funds (fee applies) · Debit for manual reductions only
-            </p>
-          </div>
+          <h1 className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">Accounts</h1>
         </div>
         {!isLoading && (
           <p className="text-xs font-semibold tabular-nums text-gray-500">
@@ -284,116 +300,192 @@ export default function AdminAccountsPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-dark">
-            <Filter size={14} aria-hidden />
-            Directory
+        <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white">
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((o) => !o)}
+              className={cn(
+                selectShell,
+                'mx-4 mt-4 flex w-[calc(100%-2rem)] items-center justify-between gap-2 px-3.5 py-2.5 text-left',
+              )}
+              aria-expanded={mobileFiltersOpen}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Filter size={15} className="text-primary-dark" aria-hidden />
+                Search accounts
+                {search.trim() ? (
+                  <span className="rounded-full bg-primary-dark px-2 py-0.5 text-[10px] font-bold text-accent">
+                    1
+                  </span>
+                ) : null}
+              </span>
+              <ChevronDown
+                size={18}
+                className={cn('shrink-0 text-gray-500 transition-transform', mobileFiltersOpen && 'rotate-180')}
+                aria-hidden
+              />
+            </button>
+            {mobileFiltersOpen ? <div className="px-4 pb-4 pt-3">{searchField}</div> : null}
           </div>
-          <div className="relative min-w-[12rem] flex-1 sm:w-64">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              aria-hidden
-            />
-            <input
-              type="search"
-              placeholder="Account number or owner…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field w-full pl-9 text-sm"
-            />
+
+          <div className="hidden flex-wrap items-center justify-between gap-3 px-6 py-4 md:flex">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-dark">
+              <Filter size={14} aria-hidden />
+              Directory
+            </div>
+            {searchField}
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200/80 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                <th className="px-4 py-2.5 sm:px-6">Account</th>
-                <th className="px-3 py-2.5">Owner</th>
-                <th className="px-3 py-2.5">Type</th>
-                <th className="px-3 py-2.5">Balance</th>
-                <th className="px-3 py-2.5">Status</th>
-                <th className="px-4 py-2.5 text-right sm:px-6">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-14 text-center">
-                    <Spinner className="mx-auto" />
-                  </td>
-                </tr>
-              ) : accounts.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-14 text-center">
-                    <Wallet size={32} className="mx-auto text-gray-300" aria-hidden />
-                    <p className="mt-3 text-sm font-medium text-gray-700">No accounts found</p>
-                    <p className="mt-1 text-xs text-gray-500">Try another search term.</p>
-                  </td>
-                </tr>
-              ) : (
-                accounts.map((a, i) => (
-                  <tr
-                    key={a.id}
-                    className={cn('transition-colors hover:bg-emerald-50/30', i % 2 === 1 && 'bg-gray-50/40')}
-                  >
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-gray-700 sm:px-6">{a.account_number}</td>
-                    <td className="px-3 py-3.5 font-medium text-gray-900">{a.owner_name}</td>
-                    <td className="px-3 py-3.5">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
-                          accountTypeBadge(a.account_type),
-                        )}
-                      >
-                        {a.account_type}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3.5 font-semibold tabular-nums text-gray-900">
-                      {formatDisplayCurrency(a.balance)}
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
-                          statusBadgeClass(a.status),
-                        )}
-                      >
-                        {a.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 sm:px-6">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          title="Deposit"
-                          onClick={() => openDeposit(a)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-emerald-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
-                        >
-                          <ArrowDownToLine size={15} aria-hidden />
-                          <span className="sr-only">Deposit to {a.account_number}</span>
-                        </button>
-                        <button
-                          type="button"
-                          title="Debit"
-                          onClick={() => {
-                            setAdjustAccount(a)
-                            setAdjustForm({ operation: 'debit', amount: '', note: '' })
-                          }}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50"
-                        >
-                          <ArrowUpFromLine size={15} aria-hidden />
-                          <span className="sr-only">Debit {a.account_number}</span>
-                        </button>
+        {isLoading ? (
+          <div className="flex justify-center py-14">
+            <Spinner />
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="px-6 py-14 text-center">
+            <Wallet size={32} className="mx-auto text-gray-300" aria-hidden />
+            <p className="mt-3 text-sm font-medium text-gray-700">No accounts found</p>
+            <p className="mt-1 text-xs text-gray-500">Try another search term.</p>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-3 p-3 md:hidden sm:p-4">
+              {accounts.map((a) => (
+                <AdminMobileCard
+                  key={a.id}
+                  className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-0 shadow-[0_2px_16px_-6px_rgba(21,42,30,0.1)]"
+                >
+                  <div className="h-1 bg-gradient-to-r from-primary-dark via-primary-dark/80 to-accent/80" aria-hidden />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-gray-900">{a.owner_name}</p>
+                        <p className="mt-0.5 break-all font-mono text-[11px] text-gray-500">{a.account_number}</p>
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                              accountTypeBadge(a.account_type),
+                            )}
+                          >
+                            {a.account_type.replace(/_/g, ' ')}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                              statusBadgeClass(a.status),
+                            )}
+                          >
+                            {a.status}
+                          </span>
+                        </div>
                       </div>
-                    </td>
+                      <p className="shrink-0 text-right text-base font-bold tabular-nums text-gray-900">
+                        {formatDisplayCurrency(a.balance)}
+                      </p>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => openDeposit(a)}
+                        className="inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 px-2.5 py-2 text-[11px] font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
+                      >
+                        <ArrowDownToLine size={14} aria-hidden />
+                        Deposit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdjustAccount(a)
+                          setAdjustForm({ operation: 'debit', amount: '', note: '' })
+                        }}
+                        className="inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border border-red-200/90 bg-red-50/80 px-2.5 py-2 text-[11px] font-semibold text-red-700 shadow-sm transition hover:bg-red-100"
+                      >
+                        <ArrowUpFromLine size={14} aria-hidden />
+                        Debit
+                      </button>
+                    </div>
+                  </div>
+                </AdminMobileCard>
+              ))}
+            </ul>
+
+            <div className="admin-table-scroll hidden md:block">
+              <table className="admin-data-table min-w-[720px]">
+                <thead>
+                  <tr className="border-b border-gray-200/80 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                    <th className="px-4 py-2.5 sm:px-6">Account</th>
+                    <th className="px-3 py-2.5">Owner</th>
+                    <th className="px-3 py-2.5">Type</th>
+                    <th className="px-3 py-2.5">Balance</th>
+                    <th className="px-3 py-2.5">Status</th>
+                    <th className="px-4 py-2.5 text-right sm:px-6">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {accounts.map((a, i) => (
+                    <tr
+                      key={a.id}
+                      className={cn('transition-colors hover:bg-emerald-50/30', i % 2 === 1 && 'bg-gray-50/40')}
+                    >
+                      <td className="px-4 py-3.5 font-mono text-[11px] text-gray-700 sm:px-6">{a.account_number}</td>
+                      <td className="px-3 py-3.5 font-medium text-gray-900">{a.owner_name}</td>
+                      <td className="px-3 py-3.5">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                            accountTypeBadge(a.account_type),
+                          )}
+                        >
+                          {a.account_type}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5 font-semibold tabular-nums text-gray-900">
+                        {formatDisplayCurrency(a.balance)}
+                      </td>
+                      <td className="px-3 py-3.5">
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                            statusBadgeClass(a.status),
+                          )}
+                        >
+                          {a.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 sm:px-6">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            title="Deposit"
+                            onClick={() => openDeposit(a)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-emerald-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+                          >
+                            <ArrowDownToLine size={15} aria-hidden />
+                            <span className="sr-only">Deposit to {a.account_number}</span>
+                          </button>
+                          <button
+                            type="button"
+                            title="Debit"
+                            onClick={() => {
+                              setAdjustAccount(a)
+                              setAdjustForm({ operation: 'debit', amount: '', note: '' })
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50"
+                          >
+                            <ArrowUpFromLine size={15} aria-hidden />
+                            <span className="sr-only">Debit {a.account_number}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
         {!isLoading && accounts.length > 0 && (
           <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-2.5 text-center text-[11px] text-gray-500 sm:px-6">

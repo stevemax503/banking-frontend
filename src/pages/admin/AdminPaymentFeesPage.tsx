@@ -102,7 +102,7 @@ export default function AdminPaymentFeesPage() {
   })
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-8">
+    <div className="admin-page mx-auto max-w-4xl space-y-6 pb-8">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -212,7 +212,7 @@ export default function AdminPaymentFeesPage() {
         ) : overrides.length === 0 ? (
           <p className="py-6 text-center text-sm text-gray-500">No overrides — default fee applies.</p>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:-mx-5">
+          <div className="admin-table-scroll">
             <table className="w-full min-w-[480px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200/80 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">

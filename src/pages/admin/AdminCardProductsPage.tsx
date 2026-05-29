@@ -63,7 +63,7 @@ export default function AdminCardProductsPage() {
   })
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="admin-page space-y-6 pb-8">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -89,7 +89,7 @@ export default function AdminCardProductsPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="admin-table-scroll">
           {isLoading ? (
             <div className="flex justify-center py-14">
               <Spinner />

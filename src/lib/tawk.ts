@@ -1,6 +1,6 @@
 export const TAWK_PROPERTY_ID =
-  import.meta.env.VITE_TAWK_PROPERTY_ID || '6a18d83c6a53b51c391fd9f9'
-export const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || '1jpogpcfe'
+  import.meta.env.VITE_TAWK_PROPERTY_ID || '6a19a97f2951b91c34153174'
+export const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || '1jpq3s7dj'
 
 let loadPromise: Promise<void> | null = null
 

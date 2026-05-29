@@ -95,7 +95,7 @@ export default function SignUpPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input
               label="Full name"
-              placeholder="John Doe"
+              placeholder="Legal full name"
               error={errors.full_name?.message}
               {...register('full_name')}
             />

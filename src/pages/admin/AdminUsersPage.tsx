@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -17,10 +17,14 @@ import {
   Trash2,
   UserPlus,
   LayoutDashboard,
+  ChevronDown,
 } from 'lucide-react'
 import { adminApi } from '@/api/admin'
+import AdminInlineSelect from '@/components/admin/AdminInlineSelect'
 import Spinner from '@/components/ui/Spinner'
 import { useAuthStore, type User } from '@/store/authStore'
+import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
+import { selectShell } from '@/components/forms/StyledSelect'
 import { cn } from '@/utils/cn'
 import { formatDate } from '@/utils/format'
 
@@ -163,14 +167,14 @@ function AdminModal({
   if (!open) return null
   return (
     <div
-      className="admin-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className="admin-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[min(92dvh,90vh)] w-full max-w-[min(100%,32rem)] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_24px_48px_-12px_rgba(21,42,30,0.2)]">
+      <div className="flex max-h-[min(92dvh,90vh)] w-full max-w-[min(100%,32rem)] flex-col overflow-hidden rounded-t-2xl border border-gray-200/90 bg-white shadow-[0_24px_48px_-12px_rgba(21,42,30,0.2)] sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-5 py-4">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -191,7 +195,7 @@ function AdminModal({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        <div className="flex gap-2 border-t border-gray-100 bg-gray-50/60 px-5 py-4">{footer}</div>
+        <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/60 px-4 py-4 sm:flex-row sm:px-5">{footer}</div>
       </div>
     </div>
   )
@@ -267,6 +271,45 @@ function CustomerAssignmentPicker({
   )
 }
 
+function MobileActionButton({
+  label,
+  icon: Icon,
+  onClick,
+  disabled,
+  variant = 'default',
+  className,
+}: {
+  label: string
+  icon: typeof Pencil
+  onClick?: () => void
+  disabled?: boolean
+  variant?: 'default' | 'primary' | 'danger' | 'success' | 'warning'
+  className?: string
+}) {
+  const variants = {
+    default: 'border-gray-200/90 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50',
+    primary: 'border-primary-dark/20 bg-primary-dark/[0.06] text-primary-dark hover:bg-primary-dark/10',
+    danger: 'border-red-200/90 bg-red-50/80 text-red-700 hover:bg-red-100',
+    success: 'border-emerald-200/90 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100',
+    warning: 'border-amber-200/90 bg-amber-50/80 text-amber-900 hover:bg-amber-100',
+  }
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-[11px] font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50',
+        variants[variant],
+        className,
+      )}
+    >
+      <Icon size={14} strokeWidth={2} aria-hidden />
+      {label}
+    </button>
+  )
+}
+
 function IconAction({
   label,
   onClick,
@@ -330,6 +373,7 @@ export default function AdminUsersPage() {
     is_active: true,
   })
   const [customerSearch, setCustomerSearch] = useState('')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   const currentUser = useAuthStore((s) => s.user)
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN'
@@ -345,11 +389,6 @@ export default function AdminUsersPage() {
   })
 
   const users = (data?.data?.results || data?.data || []) as AdminUserRow[]
-
-  const roleLabel = useMemo(
-    () => ROLE_OPTIONS.find((o) => o.value === roleFilter)?.label ?? 'All roles',
-    [roleFilter],
-  )
 
   const lockMutation = useMutation({
     mutationFn: (id: string) => adminApi.toggleUserLock(id),
@@ -504,24 +543,132 @@ export default function AdminUsersPage() {
 
   const isStaffUser = (role: string) => role !== 'CUSTOMER'
 
+  const activeFilterCount = [roleFilter, search.trim()].filter(Boolean).length
+
+  const setRoleFilterAndUrl = (v: string) => {
+    setRoleFilter(v)
+    const next = new URLSearchParams(searchParams)
+    if (v) next.set('role', v)
+    else next.delete('role')
+    setSearchParams(next, { replace: true })
+  }
+
+  const filterFields = (
+    <>
+      <div className={cn(selectShell, 'relative min-w-0 flex-1 sm:w-56')}>
+        <Search
+          size={16}
+          className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-gray-400"
+          aria-hidden
+        />
+        <input
+          type="search"
+          placeholder="Search name or email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-xl bg-transparent py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none"
+        />
+      </div>
+      <AdminInlineSelect
+        label="Role"
+        className="w-full sm:w-[11rem]"
+        value={roleFilter}
+        options={ROLE_OPTIONS}
+        onChange={(e) => setRoleFilterAndUrl(e.target.value)}
+      />
+    </>
+  )
+
+  const renderMobileUserActions = (u: AdminUserRow) => (
+    <div className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+      {u.kyc_status === 'SUBMITTED' && (
+        <div className="mb-1 flex gap-2">
+          <MobileActionButton
+            label="Approve KYC"
+            icon={Check}
+            variant="success"
+            disabled={busy}
+            className="flex-1"
+            onClick={() => kycMutation.mutate({ id: u.id, decision: 'APPROVED' })}
+          />
+          <MobileActionButton
+            label="Reject KYC"
+            icon={X}
+            variant="danger"
+            disabled={busy}
+            className="flex-1"
+            onClick={() => kycMutation.mutate({ id: u.id, decision: 'REJECTED' })}
+          />
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        {isSuperAdmin && (
+          <>
+            <MobileActionButton label="Edit" icon={Pencil} disabled={busy} onClick={() => openEdit(u)} />
+            <MobileActionButton
+              label="Delete"
+              icon={Trash2}
+              variant="danger"
+              disabled={busy || u.id === currentUser?.id}
+              onClick={() => setDeleteUser(u)}
+            />
+          </>
+        )}
+        {u.role === 'CUSTOMER' && (
+          <MobileActionButton
+            label="Dashboard"
+            icon={LayoutDashboard}
+            variant="primary"
+            disabled={busy || u.is_locked || !u.is_active}
+            className={isSuperAdmin ? undefined : 'col-span-2'}
+            onClick={() => impersonateMutation.mutate(u.id)}
+          />
+        )}
+        <MobileActionButton
+          label={u.is_locked ? 'Unlock' : 'Lock'}
+          icon={u.is_locked ? Unlock : Lock}
+          variant={u.is_locked ? 'success' : 'warning'}
+          disabled={busy}
+          onClick={() => lockMutation.mutate(u.id)}
+        />
+        <MobileActionButton
+          label="Send OTP"
+          icon={KeyRound}
+          variant="warning"
+          disabled={busy}
+          onClick={() => {
+            const send = window.confirm(
+              'Send OTP to user email as well?\nOK = email + show here\nCancel = desk code only (no email)',
+            )
+            otpMutation.mutate({ id: u.id, send_email: send })
+          }}
+        />
+        <Link
+          to={`/admin/email-otps?user=${encodeURIComponent(u.email)}`}
+          className="col-span-2 inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border border-gray-200/90 bg-white px-2.5 py-2 text-[11px] font-semibold text-gray-700 shadow-sm transition hover:border-primary-dark/20 hover:bg-gray-50 hover:text-primary-dark"
+        >
+          <ExternalLink size={14} aria-hidden />
+          View verification codes
+        </Link>
+      </div>
+    </div>
+  )
+
   return (
     <div className="admin-page space-y-6 pb-8">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
+      <section className="flex flex-col gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
             <Users size={18} strokeWidth={1.75} aria-hidden />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">User management</h1>
-            <p className="text-xs text-gray-500">Accounts, roles, KYC, and desk actions</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {!isLoading && (
-            <p className="text-xs font-semibold tabular-nums text-gray-500">
+            <p className="text-xs font-semibold tabular-nums text-gray-500 sm:order-last">
               {users.length} {users.length === 1 ? 'user' : 'users'}
-              {roleFilter ? ` · ${roleLabel}` : ''}
-              {search.trim() ? ` · “${search.trim()}”` : ''}
             </p>
           )}
           {isSuperAdmin && (
@@ -532,9 +679,9 @@ export default function AdminUsersPage() {
                 setCustomerSearch('')
                 setCreateOpen(true)
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-dark px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-dark/90"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-dark px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark/90 sm:w-auto"
             >
-              <UserPlus size={14} aria-hidden />
+              <UserPlus size={15} aria-hidden />
               Add admin user
             </button>
           )}
@@ -542,49 +689,110 @@ export default function AdminUsersPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-dark">
-            <Filter size={14} aria-hidden />
-            Directory
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[12rem] flex-1 sm:w-56">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white">
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((o) => !o)}
+              className={cn(
+                selectShell,
+                'mx-4 mt-4 flex w-[calc(100%-2rem)] items-center justify-between gap-2 px-3.5 py-2.5 text-left',
+              )}
+              aria-expanded={mobileFiltersOpen}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Filter size={15} className="text-primary-dark" aria-hidden />
+                Search &amp; filter
+                {activeFilterCount > 0 ? (
+                  <span className="rounded-full bg-primary-dark px-2 py-0.5 text-[10px] font-bold text-accent">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </span>
+              <ChevronDown
+                size={18}
+                className={cn('shrink-0 text-gray-500 transition-transform', mobileFiltersOpen && 'rotate-180')}
                 aria-hidden
               />
-              <input
-                type="search"
-                placeholder="Search name or email…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field w-full pl-9 text-sm"
-              />
+            </button>
+            {mobileFiltersOpen ? (
+              <div className="flex flex-col gap-2.5 px-4 pb-4 pt-3">{filterFields}</div>
+            ) : null}
+          </div>
+
+          <div className="hidden flex-wrap items-center justify-between gap-3 px-6 py-4 md:flex">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-dark">
+              <Filter size={14} aria-hidden />
+              Directory
             </div>
-            <select
-              className="input-field w-auto min-w-[11rem] text-sm"
-              value={roleFilter}
-              onChange={(e) => {
-                const v = e.target.value
-                setRoleFilter(v)
-                const next = new URLSearchParams(searchParams)
-                if (v) next.set('role', v)
-                else next.delete('role')
-                setSearchParams(next, { replace: true })
-              }}
-            >
-              {ROLE_OPTIONS.map((opt) => (
-                <option key={opt.value || 'all'} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap items-center justify-end gap-2">{filterFields}</div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+        {isLoading ? (
+          <div className="flex justify-center py-14">
+            <Spinner />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="px-6 py-14 text-center">
+            <Shield size={32} className="mx-auto text-gray-300" aria-hidden />
+            <p className="mt-3 text-sm font-medium text-gray-700">No users match your filters</p>
+            <p className="mt-1 text-xs text-gray-500">Try a different role or search term.</p>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-3 p-3 md:hidden sm:p-4">
+              {users.map((u) => (
+                <AdminMobileCard
+                  key={u.id}
+                  className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-0 shadow-[0_2px_16px_-6px_rgba(21,42,30,0.1)]"
+                >
+                  <div className="h-1 bg-gradient-to-r from-primary-dark via-primary-dark/80 to-accent/80" aria-hidden />
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-dark text-sm font-bold text-accent shadow-sm"
+                        aria-hidden
+                      >
+                        {userInitials(u.full_name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-gray-900">{u.full_name}</p>
+                            <p className="truncate text-xs text-gray-500">{u.email}</p>
+                          </div>
+                          <StatusPill user={u} />
+                        </div>
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                              roleBadgeClass(u.role),
+                            )}
+                          >
+                            {formatRoleLabel(u.role)}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset',
+                              kycBadgeClass(u.kyc_status),
+                            )}
+                          >
+                            KYC {u.kyc_status.toLowerCase()}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-[11px] text-gray-400">Joined {formatDate(u.date_joined)}</p>
+                      </div>
+                    </div>
+                    {renderMobileUserActions(u)}
+                  </div>
+                </AdminMobileCard>
+              ))}
+            </ul>
+
+            <div className="admin-table-scroll hidden md:block">
+          <table className="admin-data-table min-w-[720px]">
             <thead>
               <tr className="border-b border-gray-200/80 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
                 <th className="px-4 py-2.5 sm:px-6">User</th>
@@ -596,22 +804,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-14 text-center">
-                    <Spinner className="mx-auto" />
-                  </td>
-                </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-14 text-center">
-                    <Shield size={32} className="mx-auto text-gray-300" aria-hidden />
-                    <p className="mt-3 text-sm font-medium text-gray-700">No users match your filters</p>
-                    <p className="mt-1 text-xs text-gray-500">Try a different role or search term.</p>
-                  </td>
-                </tr>
-              ) : (
-                users.map((u, i) => (
+              {users.map((u, i) => (
                   <tr
                     key={u.id}
                     className={cn('transition-colors hover:bg-emerald-50/30', i % 2 === 1 && 'bg-gray-50/40')}
@@ -758,11 +951,12 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
-        </div>
+            </div>
+          </>
+        )}
 
         {!isLoading && users.length > 0 && (
           <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-2.5 text-center text-[11px] text-gray-500 sm:px-6">
@@ -1024,12 +1218,12 @@ export default function AdminUsersPage() {
         icon={Trash2}
         footer={
           <>
-            <button type="button" className="btn-secondary flex-1" onClick={() => setDeleteUser(null)}>
+            <button type="button" className="btn-secondary w-full sm:flex-1" onClick={() => setDeleteUser(null)}>
               Cancel
             </button>
             <button
               type="button"
-              className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+              className="w-full flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50 sm:w-auto"
               disabled={deleteMutation.isPending}
               onClick={() => deleteMutation.mutate()}
             >

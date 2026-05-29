@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/utils/cn'
 import SafaPayLogo from '@/components/brand/SafaPayLogo'
 import Header from './Header'
+import GoogleTranslateControl from '@/components/layout/GoogleTranslateControl'
 
 const adminNav = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/admin' },
@@ -123,6 +124,9 @@ export default function AdminLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <div className="hidden items-center justify-end border-b border-gray-100 bg-white px-6 py-2.5 lg:flex">
+          <GoogleTranslateControl />
+        </div>
         <Header onOpenMobileMenu={() => setMobileNavOpen(true)} />
         <main className="min-w-0 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6">
           <Outlet />

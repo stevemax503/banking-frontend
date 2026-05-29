@@ -102,7 +102,7 @@ export default function AdminTicketsPage() {
   })
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="admin-page space-y-6 pb-8">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -144,7 +144,7 @@ export default function AdminTicketsPage() {
               const messages = t.messages ?? []
               return (
                 <div key={t.id} className={cn('transition-colors', open && 'bg-gray-50/30')}>
-                  <div className="flex items-start gap-3 px-4 py-3.5 sm:px-6">
+                  <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-start sm:px-6">
                     <button
                       type="button"
                       onClick={() => setOpenId(open ? null : t.id)}
@@ -192,7 +192,11 @@ export default function AdminTicketsPage() {
                       </p>
                     </button>
 
-                    <div className={cn(selectShell, 'w-[9.5rem] shrink-0')} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+                      <div
+                        className={cn(selectShell, 'w-full min-w-0 sm:w-[9.5rem] shrink-0')}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                       <select
                         value={t.status}
                         onChange={(e) => statusMutation.mutate({ id: t.id, status: e.target.value })}
@@ -211,6 +215,7 @@ export default function AdminTicketsPage() {
                       >
                         <ChevronDown size={14} />
                       </span>
+                    </div>
                     </div>
                   </div>
 

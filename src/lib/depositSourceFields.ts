@@ -21,15 +21,15 @@ export type DepositSourceField = {
 
 export const DEPOSIT_SOURCE_FIELDS: Record<DepositMethodKey, DepositSourceField[]> = {
   TRANSFER: [
-    { key: 'depositor_name', label: 'Depositor name', required: true, placeholder: 'John Smith' },
-    { key: 'sender_bank_name', label: 'Originating bank', required: true, placeholder: 'Chase Bank NA' },
-    { key: 'sender_account_number', label: 'Sender account number', required: true, placeholder: '1234567890' },
-    { key: 'transfer_reference', label: 'Transfer reference', required: false, placeholder: 'TRF-20260517-001' },
+    { key: 'depositor_name', label: 'Depositor name', required: true, placeholder: 'Name as on originating account' },
+    { key: 'sender_bank_name', label: 'Originating bank', required: true, placeholder: 'Originating bank name' },
+    { key: 'sender_account_number', label: 'Sender account number', required: true, placeholder: 'Account number' },
+    { key: 'transfer_reference', label: 'Transfer reference', required: false, placeholder: 'Bank reference (if any)' },
   ],
   CARD: [
     { key: 'cardholder_name', label: 'Cardholder name', required: true },
-    { key: 'card_last_four', label: 'Card last 4 digits', required: true, placeholder: '4242' },
-    { key: 'card_brand', label: 'Card brand', required: false, placeholder: 'Visa' },
+    { key: 'card_last_four', label: 'Card last 4 digits', required: true, placeholder: 'Last 4 digits' },
+    { key: 'card_brand', label: 'Card brand', required: false, placeholder: 'Visa, Mastercard, …' },
     { key: 'authorization_code', label: 'Authorization code', required: false },
   ],
   WIRE: [

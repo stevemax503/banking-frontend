@@ -1,6 +1,7 @@
 import { Lock, ShieldCheck, Sparkles } from 'lucide-react'
 import AuthAnimatedTagline from '@/components/auth/AuthAnimatedTagline'
 import SafaPayLogo from '@/components/brand/SafaPayLogo'
+import GoogleTranslateControl from '@/components/layout/GoogleTranslateControl'
 import { BANK_NAME } from '@/lib/brand'
 
 interface SplitAuthLayoutProps {
@@ -96,6 +97,10 @@ export default function SplitAuthLayout({ children, fitViewport = false }: Split
           className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-primary-dark/[0.04] blur-2xl"
           aria-hidden
         />
+
+        <div className="absolute right-3 top-3 z-20 sm:right-4 sm:top-4">
+          <GoogleTranslateControl />
+        </div>
 
         {!fitViewport ? (
           <SafaPayLogo

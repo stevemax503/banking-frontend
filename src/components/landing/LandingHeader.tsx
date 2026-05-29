@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import SafaPayLogo from '@/components/brand/SafaPayLogo'
 import { LANDING_HEADER_BAR_HEIGHT_CLASS } from '@/components/landing/landingHeaderLayout'
 import { cn } from '@/utils/cn'
+import GoogleTranslateControl from '@/components/layout/GoogleTranslateControl'
 
 const SCROLL_THRESHOLD_PX = 24
 
@@ -110,6 +111,7 @@ export default function LandingHeader() {
             >
               Sign up
             </Link>
+            <GoogleTranslateControl variant={onGlass ? 'onDark' : 'default'} />
           </div>
         </div>
       </div>

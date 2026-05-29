@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { adminApi } from '@/api/admin'
+import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDisplayCurrency, formatPercentage } from '@/utils/format'
@@ -171,103 +172,177 @@ export default function AdminLoanProductsTab() {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-4 py-3 sm:px-6">
-        <p className="text-xs text-gray-500">
+      <div className="flex flex-col gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p className="hidden text-xs text-gray-500 sm:block">
           Rates, limits, images, and copy shown on the customer Loans page.
         </p>
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary-dark px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-light"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-dark px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-light sm:w-auto"
         >
           <Plus size={14} aria-hidden /> Add product
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Spinner />
-          </div>
-        ) : products.length === 0 ? (
-          <p className="py-10 text-center text-sm text-gray-500">No loan products yet.</p>
-        ) : (
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-200/80 bg-gray-50 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                <th className="pb-3 pr-3">Product</th>
-                <th className="pb-3 pr-3">Type</th>
-                <th className="pb-3 pr-3">Rate</th>
-                <th className="pb-3 pr-3">Amount range</th>
-                <th className="pb-3 pr-3">Term</th>
-                <th className="pb-3 pr-3">Status</th>
-                <th className="pb-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p.id} className="border-b border-gray-50 align-middle hover:bg-gray-50/80">
-                  <td className="py-3 pr-3">
-                    <div className="flex items-center gap-3">
-                      {p.hero_image_url ? (
-                        <img src={p.hero_image_url} alt="" className="h-10 w-14 rounded-lg object-cover" />
-                      ) : (
-                        <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-gray-100 text-[10px] text-gray-400">
-                          No img
-                        </div>
-                      )}
-                      <span className="font-medium text-gray-900">{p.name}</span>
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Spinner />
+        </div>
+      ) : products.length === 0 ? (
+        <p className="py-10 text-center text-sm text-gray-500">No loan products yet.</p>
+      ) : (
+        <>
+          <ul className="space-y-3 p-3 md:hidden sm:p-4">
+            {products.map((p) => (
+              <AdminMobileCard
+                key={p.id}
+                className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-0 shadow-[0_2px_16px_-6px_rgba(21,42,30,0.1)]"
+              >
+                <div className="h-1 bg-gradient-to-r from-primary-dark via-primary-dark/80 to-accent/80" aria-hidden />
+                <div className="p-4">
+                  <div className="flex gap-3">
+                    {p.hero_image_url ? (
+                      <img src={p.hero_image_url} alt="" className="h-16 w-20 shrink-0 rounded-xl object-cover" />
+                    ) : (
+                      <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-[10px] text-gray-400">
+                        No img
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="truncate font-semibold text-gray-900">{p.name}</p>
+                        <span className={cn('badge shrink-0 text-[10px]', p.is_active ? 'badge-success' : 'badge-neutral')}>
+                          {p.is_active ? 'Active' : 'Hidden'}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-gray-500">{p.loan_type.replace(/_/g, ' ')}</p>
+                      <p className="mt-2 text-sm font-bold tabular-nums text-gray-900">
+                        {formatPercentage(p.interest_rate)} APR
+                      </p>
                     </div>
-                  </td>
-                  <td className="py-3 pr-3 text-gray-600">{p.loan_type.replace(/_/g, ' ')}</td>
-                  <td className="py-3 pr-3 tabular-nums">{formatPercentage(p.interest_rate)}</td>
-                  <td className="py-3 pr-3 text-xs text-gray-600">
-                    {formatDisplayCurrency(p.min_amount)} – {formatDisplayCurrency(p.max_amount)}
-                  </td>
-                  <td className="py-3 pr-3 text-gray-600">
-                    {p.min_term_months}–{p.max_term_months} mo
-                  </td>
-                  <td className="py-3 pr-3">
-                    <span className={cn('badge text-[10px]', p.is_active ? 'badge-success' : 'badge-neutral')}>
-                      {p.is_active ? 'Active' : 'Hidden'}
-                    </span>
-                  </td>
-                  <td className="py-3">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary-dark hover:underline"
-                      >
-                        <Pencil size={14} /> Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deleteMutation.isPending || (p.application_count ?? 0) > 0}
-                        title={
-                          (p.application_count ?? 0) > 0
-                            ? 'Cannot delete — applications exist'
-                            : 'Delete product'
-                        }
-                        onClick={() => {
-                          if (window.confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id)
-                        }}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline disabled:opacity-40"
-                      >
-                        <Trash2 size={14} /> Delete
-                      </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-600">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Amount</p>
+                      <p className="mt-0.5 tabular-nums">
+                        {formatDisplayCurrency(p.min_amount)} – {formatDisplayCurrency(p.max_amount)}
+                      </p>
                     </div>
-                  </td>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Term</p>
+                      <p className="mt-0.5 tabular-nums">
+                        {p.min_term_months}–{p.max_term_months} mo
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-100 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(p)}
+                      className="inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-primary-dark shadow-sm transition hover:bg-gray-50"
+                    >
+                      <Pencil size={14} aria-hidden />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deleteMutation.isPending || (p.application_count ?? 0) > 0}
+                      title={
+                        (p.application_count ?? 0) > 0 ? 'Cannot delete — applications exist' : 'Delete product'
+                      }
+                      onClick={() => {
+                        if (window.confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id)
+                      }}
+                      className="inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border border-red-200/90 bg-red-50/80 px-2.5 py-2 text-[11px] font-semibold text-red-700 shadow-sm transition hover:bg-red-100 disabled:opacity-40"
+                    >
+                      <Trash2 size={14} aria-hidden />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </AdminMobileCard>
+            ))}
+          </ul>
+
+          <div className="admin-table-scroll hidden md:block">
+            <table className="admin-data-table min-w-[900px]">
+              <thead>
+                <tr className="border-b border-gray-200/80 bg-gray-50 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  <th className="px-4 pb-3 pr-3 pt-3 sm:px-6">Product</th>
+                  <th className="pb-3 pr-3 pt-3">Type</th>
+                  <th className="pb-3 pr-3 pt-3">Rate</th>
+                  <th className="pb-3 pr-3 pt-3">Amount range</th>
+                  <th className="pb-3 pr-3 pt-3">Term</th>
+                  <th className="pb-3 pr-3 pt-3">Status</th>
+                  <th className="pb-3 pt-3">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {products.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-50 align-middle hover:bg-gray-50/80">
+                    <td className="px-4 py-3 pr-3 sm:px-6">
+                      <div className="flex items-center gap-3">
+                        {p.hero_image_url ? (
+                          <img src={p.hero_image_url} alt="" className="h-10 w-14 rounded-lg object-cover" />
+                        ) : (
+                          <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-gray-100 text-[10px] text-gray-400">
+                            No img
+                          </div>
+                        )}
+                        <span className="font-medium text-gray-900">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-3 text-gray-600">{p.loan_type.replace(/_/g, ' ')}</td>
+                    <td className="py-3 pr-3 tabular-nums">{formatPercentage(p.interest_rate)}</td>
+                    <td className="py-3 pr-3 text-xs text-gray-600">
+                      {formatDisplayCurrency(p.min_amount)} – {formatDisplayCurrency(p.max_amount)}
+                    </td>
+                    <td className="py-3 pr-3 text-gray-600">
+                      {p.min_term_months}–{p.max_term_months} mo
+                    </td>
+                    <td className="py-3 pr-3">
+                      <span className={cn('badge text-[10px]', p.is_active ? 'badge-success' : 'badge-neutral')}>
+                        {p.is_active ? 'Active' : 'Hidden'}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(p)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-primary-dark hover:underline"
+                        >
+                          <Pencil size={14} /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deleteMutation.isPending || (p.application_count ?? 0) > 0}
+                          title={
+                            (p.application_count ?? 0) > 0
+                              ? 'Cannot delete — applications exist'
+                              : 'Delete product'
+                          }
+                          onClick={() => {
+                            if (window.confirm(`Delete "${p.name}"?`)) deleteMutation.mutate(p.id)
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline disabled:opacity-40"
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {editorOpen ? (
-        <div className="admin-modal-backdrop fixed inset-0 z-[90] flex items-end justify-center overflow-y-auto bg-black/50 p-3 sm:items-center sm:p-4">
-          <div className="card my-4 w-full max-w-[min(100%,42rem)] max-h-[min(92dvh,800px)] overflow-y-auto p-4 sm:my-8 sm:p-6">
+        <div className="admin-modal-backdrop fixed inset-0 z-[90] flex items-end justify-center overflow-y-auto bg-black/50 p-0 sm:items-center sm:p-4">
+          <div className="card my-0 w-full max-w-[min(100%,42rem)] max-h-[min(92dvh,800px)] overflow-y-auto rounded-t-2xl p-4 sm:my-8 sm:rounded-2xl sm:p-6">
             <h2 className="text-lg font-bold text-gray-900">{editing ? 'Edit loan product' : 'New loan product'}</h2>
             <p className="mt-1 text-xs text-gray-500">
               Fields match the customer Loans catalog: hero image, tagline, rates, limits, and full description.
@@ -431,7 +506,7 @@ export default function AdminLoanProductsTab() {
                 Visible to customers
               </label>
 
-              <div className="flex gap-3 border-t border-gray-100 pt-4">
+              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-4 sm:flex-row">
                 <button type="button" className="btn-outline flex-1 py-2.5 text-sm" onClick={closeEditor}>
                   Cancel
                 </button>

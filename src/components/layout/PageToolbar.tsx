@@ -4,6 +4,7 @@ import { ArrowLeft, Bell } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { notificationsApi } from '@/api/notifications'
 import UserMenu from './UserMenu'
+import GoogleTranslateControl from '@/components/layout/GoogleTranslateControl'
 
 export type PageToolbarProps = {
   showBack?: boolean
@@ -60,6 +61,9 @@ export default function PageToolbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <div className="hidden lg:block">
+          <GoogleTranslateControl />
+        </div>
         {onOpenNotifications ? (
           <button
             type="button"

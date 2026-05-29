@@ -316,7 +316,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="admin-page space-y-6 pb-8">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
         <h1 className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">Admin dashboard</h1>
         <Link
@@ -363,7 +363,7 @@ export default function AdminDashboardPage() {
             </Link>
           }
         >
-          <div className="overflow-x-auto">
+          <div className="admin-table-scroll">
             {recentOtpLoading ? (
               <div className="flex justify-center py-10">
                 <Spinner />
@@ -447,7 +447,7 @@ export default function AdminDashboardPage() {
             </Link>
           }
         >
-          <div className="overflow-x-auto">
+          <div className="admin-table-scroll">
             {auditLoading ? (
               <div className="flex justify-center py-10">
                 <Spinner />

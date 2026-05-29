@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { KeyRound, RefreshCw, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { KeyRound, RefreshCw, Search, Filter, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { adminApi } from '@/api/admin'
+import AdminInlineSelect from '@/components/admin/AdminInlineSelect'
+import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
+import { selectShell } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { fromAdminPaginatedResponse } from '@/lib/adminList'
 import { formatDate } from '@/utils/format'
@@ -89,6 +92,7 @@ export default function AdminEmailOtpPage() {
   const [usedFilter, setUsedFilter] = useState('')
   const [userFilter, setUserFilter] = useState(userFromUrl)
   const [page, setPage] = useState(1)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   useEffect(() => {
     if (purposeFromUrl) setPurpose(purposeFromUrl)
@@ -124,8 +128,68 @@ export default function AdminEmailOtpPage() {
   const purposeLabel = PURPOSE_OPTIONS.find((o) => o.value === purpose)?.label ?? 'All purposes'
   const usedLabel = USED_OPTIONS.find((o) => o.value === usedFilter)?.label ?? 'Used + unused'
 
+  const activeFilterCount = [purpose, usedFilter, userFilter.trim()].filter(Boolean).length
+
+  const filterFields = (
+    <>
+      <div className={cn(selectShell, 'relative min-w-0 flex-1 sm:w-52')}>
+        <Search
+          size={16}
+          className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 text-gray-400"
+          aria-hidden
+        />
+        <input
+          type="search"
+          className="w-full rounded-xl bg-transparent py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none"
+          placeholder="Customer email…"
+          value={userFilter}
+          onChange={(e) => setUserFilter(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') applyUserFilter()
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={applyUserFilter}
+        className="shrink-0 rounded-xl border border-gray-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-primary-dark shadow-sm transition hover:border-primary-dark/25 hover:bg-gray-50"
+      >
+        Apply
+      </button>
+      <AdminInlineSelect
+        label="Purpose"
+        className="w-full sm:w-[11rem]"
+        value={purpose}
+        options={PURPOSE_OPTIONS}
+        onChange={(e) => {
+          setPurpose(e.target.value)
+          setPage(1)
+        }}
+      />
+      <AdminInlineSelect
+        label="Usage status"
+        className="w-full sm:w-[10.5rem]"
+        value={usedFilter}
+        options={USED_OPTIONS}
+        onChange={(e) => {
+          setUsedFilter(e.target.value)
+          setPage(1)
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => refetch()}
+        disabled={isFetching}
+        className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl border border-gray-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-primary-dark/25 hover:bg-gray-50 disabled:opacity-50 sm:w-auto"
+      >
+        <RefreshCw size={15} className={cn(isFetching && 'animate-spin')} aria-hidden />
+        Refresh
+      </button>
+    </>
+  )
+
   return (
-    <div className="space-y-6 pb-8">
+    <div className="admin-page space-y-6 pb-8">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -133,13 +197,6 @@ export default function AdminEmailOtpPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-gray-900 sm:text-xl">Verification codes</h1>
-            <p className="text-xs text-gray-500">
-              Login MFA, transfers, and compliance fees · auto-refresh 15s
-            </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
-              Codes are stored here even when email is not configured locally. Share the 6-digit code with
-              the customer if they did not receive email.
-            </p>
           </div>
         </div>
         {!isLoading && (
@@ -157,88 +214,85 @@ export default function AdminEmailOtpPage() {
       )}
 
       <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
-        <div className="flex flex-col gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-dark">
-            <Filter size={14} aria-hidden />
-            Filters
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[12rem] flex-1 sm:w-52">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white">
+          {/* Mobile: collapsible filter panel */}
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((o) => !o)}
+              className={cn(
+                selectShell,
+                'mx-4 mt-4 flex w-[calc(100%-2rem)] items-center justify-between gap-2 px-3.5 py-2.5 text-left',
+              )}
+              aria-expanded={mobileFiltersOpen}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Filter size={15} className="text-primary-dark" aria-hidden />
+                Filters
+                {activeFilterCount > 0 ? (
+                  <span className="rounded-full bg-primary-dark px-2 py-0.5 text-[10px] font-bold text-accent">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </span>
+              <ChevronDown
+                size={18}
+                className={cn('shrink-0 text-gray-500 transition-transform', mobileFiltersOpen && 'rotate-180')}
                 aria-hidden
               />
-              <input
-                type="search"
-                className="input-field w-full pl-9 text-sm"
-                placeholder="Customer email…"
-                value={userFilter}
-                onChange={(e) => setUserFilter(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') applyUserFilter()
-                }}
-              />
+            </button>
+            {mobileFiltersOpen ? (
+              <div className="flex flex-col gap-2.5 px-4 pb-4 pt-3">{filterFields}</div>
+            ) : null}
+          </div>
+
+          {/* Desktop: inline filter bar */}
+          <div className="hidden flex-wrap items-center justify-between gap-3 px-6 py-4 md:flex">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-primary-dark">
+              <Filter size={14} aria-hidden />
+              Filters
             </div>
-            <button
-              type="button"
-              onClick={applyUserFilter}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-primary-dark shadow-sm transition hover:border-primary-dark/25 hover:bg-gray-50"
-            >
-              Apply
-            </button>
-            <select
-              className="input-field w-auto min-w-[10rem] text-sm"
-              value={purpose}
-              onChange={(e) => {
-                setPurpose(e.target.value)
-                setPage(1)
-              }}
-            >
-              {PURPOSE_OPTIONS.map((o) => (
-                <option key={o.value || 'all'} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input-field w-auto min-w-[9rem] text-sm"
-              value={usedFilter}
-              onChange={(e) => {
-                setUsedFilter(e.target.value)
-                setPage(1)
-              }}
-            >
-              {USED_OPTIONS.map((o) => (
-                <option key={o.value || 'all'} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-primary-dark/25 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={cn(isFetching && 'animate-spin')} aria-hidden />
-              Refresh
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">{filterFields}</div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="flex justify-center py-14">
-              <Spinner />
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="px-6 py-14 text-center">
-              <KeyRound size={32} className="mx-auto text-gray-300" aria-hidden />
-              <p className="mt-3 text-sm font-medium text-gray-700">No codes match your filters</p>
-              <p className="mt-1 text-xs text-gray-500">Try another email, purpose, or status.</p>
-            </div>
-          ) : (
+        {isLoading ? (
+          <div className="flex justify-center py-14">
+            <Spinner />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="px-6 py-14 text-center">
+            <KeyRound size={32} className="mx-auto text-gray-300" aria-hidden />
+            <p className="mt-3 text-sm font-medium text-gray-700">No codes match your filters</p>
+            <p className="mt-1 text-xs text-gray-500">Try another email, purpose, or status.</p>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-3 p-3 md:hidden sm:p-4">
+              {rows.map((r) => (
+                <AdminMobileCard key={r.id}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900">{r.user_name}</p>
+                      <p className="truncate text-[11px] text-gray-500">{r.user_email}</p>
+                      <p className="mt-2 text-[10px] uppercase tracking-wide text-gray-400">
+                        {r.purpose_label ?? r.purpose}
+                        {r.fee_line_name ? ` · ${r.fee_line_name}` : ''}
+                      </p>
+                    </div>
+                    <OtpStatusBadge row={r} />
+                  </div>
+                  <p className="mt-3 inline-block rounded-lg bg-primary-dark/[0.06] px-2.5 py-1 font-mono text-lg font-bold tracking-[0.2em] text-primary-dark ring-1 ring-primary-dark/10">
+                    {r.token}
+                  </p>
+                  <p className="mt-2 text-[11px] text-gray-500">
+                    Created {formatDate(r.created_at, 'MMM d, HH:mm')} · Expires{' '}
+                    {formatDate(r.expires_at, 'MMM d, HH:mm')}
+                  </p>
+                </AdminMobileCard>
+              ))}
+            </ul>
+            <div className="admin-table-scroll hidden md:block">
             <table className="w-full min-w-[880px] text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-200/80 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
@@ -312,8 +366,9 @@ export default function AdminEmailOtpPage() {
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+            </div>
+          </>
+        )}
 
         {!isLoading && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/60 px-4 py-3 sm:px-6">

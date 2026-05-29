@@ -566,7 +566,11 @@ export default function CompleteProfilePage() {
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <Label required>Full name</Label>
-                    <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                    <TextInput
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="As printed on your document"
+                    />
                   </div>
                   <div>
                     <Label>Email</Label>

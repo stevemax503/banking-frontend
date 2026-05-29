@@ -91,7 +91,11 @@
   }
 
   .admin-table-scroll {
-    @apply -mx-3 overflow-x-auto px-3 sm:-mx-0 sm:px-0;
+    @apply -mx-3 max-w-[calc(100%+1.5rem)] overflow-x-auto overscroll-x-contain px-3 sm:-mx-0 sm:max-w-none sm:px-0;
+  }
+
+  .admin-filter-field {
+    @apply w-full min-w-0 sm:w-auto sm:min-w-[9rem];
   }
 
   /** Admin list tables: fixed layout so headers line up with cell content */
@@ -686,4 +690,50 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #9CA3AF;
+}
+
+/* Google Website Translator — hidden engine; UI is custom GoogleTranslateControl */
+#google_translate_element,
+.google-translate-hidden {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: -1 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.goog-te-banner-frame.skiptranslate,
+iframe.skiptranslate,
+.goog-te-balloon-frame,
+#goog-gt-tt {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
+
+/* Hide Google branding only — keep .goog-te-combo in DOM for the engine */
+.goog-te-gadget-icon,
+.goog-logo-link,
+.goog-te-gadget a {
+  display: none !important;
+}
+
+.goog-te-gadget-simple .goog-te-menu-value span:first-child {
+  display: none !important;
+}
+
+.goog-te-combo {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }

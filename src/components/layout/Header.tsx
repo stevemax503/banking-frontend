@@ -1,4 +1,5 @@
 import { Menu } from 'lucide-react'
+import GoogleTranslateControl from '@/components/layout/GoogleTranslateControl'
 
 interface HeaderProps {
   /** Opens the mobile navigation drawer (customer app). */
@@ -19,6 +20,9 @@ export default function Header({ onOpenMobileMenu }: HeaderProps) {
           <Menu size={22} strokeWidth={2} />
         </button>
       ) : null}
+      <div className="ml-auto shrink-0">
+        <GoogleTranslateControl />
+      </div>
     </header>
   )
 }

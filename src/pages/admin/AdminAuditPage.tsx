@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ClipboardList, Filter, Search } from 'lucide-react'
 import { adminApi } from '@/api/admin'
 import { StyledSelect } from '@/components/forms/StyledSelect'
+import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDate } from '@/utils/format'
@@ -67,7 +68,7 @@ export default function AdminAuditPage() {
   const logs = fromAdminListResponse<AuditRow>(data)
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="admin-page space-y-6 pb-8">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -154,7 +155,54 @@ export default function AdminAuditPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {isLoading ? (
+          <div className="flex justify-center py-14">
+            <Spinner />
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="px-6 py-14 text-center">
+            <ClipboardList size={32} className="mx-auto text-gray-300" aria-hidden />
+            <p className="mt-3 text-sm font-medium text-gray-700">No events match your filters</p>
+            <p className="mt-1 text-xs text-gray-500">Try a different search or actor scope.</p>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-3 p-3 md:hidden sm:p-4">
+              {logs.map((log) => (
+                <AdminMobileCard key={log.id}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ring-inset',
+                        actionBadgeClass(log.action),
+                      )}
+                    >
+                      {log.action}
+                    </span>
+                    {log.actor_role ? (
+                      <span
+                        className={cn(
+                          'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ring-inset',
+                          roleBadgeClass(log.actor_role),
+                        )}
+                      >
+                        {log.actor_role}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-gray-800">{log.actor_email || 'System'}</p>
+                  <p className="mt-1 text-[11px] text-gray-500">{formatDate(log.timestamp, 'MMM d, HH:mm:ss')}</p>
+                  <p className="mt-2 text-xs text-gray-600">{log.description || '—'}</p>
+                  {log.target_model ? (
+                    <p className="mt-1 font-mono text-[10px] text-gray-400">
+                      {log.target_model}
+                      {log.target_id ? ` #${log.target_id.slice(0, 8)}` : ''}
+                    </p>
+                  ) : null}
+                </AdminMobileCard>
+              ))}
+            </ul>
+            <div className="admin-table-scroll hidden md:block">
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200/80 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
@@ -168,22 +216,7 @@ export default function AdminAuditPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="py-14 text-center">
-                    <Spinner className="mx-auto" />
-                  </td>
-                </tr>
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-14 text-center">
-                    <ClipboardList size={32} className="mx-auto text-gray-300" aria-hidden />
-                    <p className="mt-3 text-sm font-medium text-gray-700">No events match your filters</p>
-                    <p className="mt-1 text-xs text-gray-500">Try a different search or actor scope.</p>
-                  </td>
-                </tr>
-              ) : (
-                logs.map((log, i) => (
+              {logs.map((log, i) => (
                   <tr
                     key={log.id}
                     className={cn('transition-colors hover:bg-emerald-50/25', i % 2 === 1 && 'bg-gray-50/40')}
@@ -233,11 +266,12 @@ export default function AdminAuditPage() {
                       {log.ip_address || '—'}
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
-        </div>
+            </div>
+          </>
+        )}
 
         {!isLoading && logs.length > 0 ? (
           <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-2.5 text-center text-[11px] text-gray-500">

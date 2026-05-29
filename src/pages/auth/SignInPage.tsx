@@ -51,16 +51,12 @@ export default function SignInPage() {
     <SplitAuthLayout>
       <AuthFormCard>
         <AuthBackLink to="/" label="Back to home" />
-        <AuthFormHeader
-          title="Welcome back"
-          subtitle="Enter your credentials to access your SafaPay account."
-        />
+        <AuthFormHeader title="Welcome back" />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Input
             label="Email address"
             type="email"
-            placeholder="name@company.com"
             autoComplete="email"
             error={errors.email?.message}
             {...register('email')}
@@ -76,7 +72,6 @@ export default function SignInPage() {
               </Link>
             </div>
             <PasswordInput
-              placeholder="••••••••"
               autoComplete="current-password"
               error={errors.password?.message}
               {...register('password')}

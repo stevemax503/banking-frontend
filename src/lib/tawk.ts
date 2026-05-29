@@ -1,6 +1,9 @@
 export const TAWK_PROPERTY_ID =
-  import.meta.env.VITE_TAWK_PROPERTY_ID || '6a19a97f2951b91c34153174'
-export const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || '1jpq3s7dj'
+  (import.meta.env.VITE_TAWK_PROPERTY_ID || '').trim() || '6a19a97f2951b91c34153174'
+export const TAWK_WIDGET_ID =
+  (import.meta.env.VITE_TAWK_WIDGET_ID || '').trim() || '1jpq3s7dj'
+
+const TAWK_SCRIPT_SRC = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`
 
 let loadPromise: Promise<void> | null = null
 
@@ -20,24 +23,42 @@ export function loadTawk(): Promise<void> {
   if (loadPromise) return loadPromise
 
   loadPromise = new Promise((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+
     window.Tawk_API = window.Tawk_API || {}
     window.Tawk_LoadStart = new Date()
 
     const previousOnLoad = window.Tawk_API.onLoad
     window.Tawk_API.onLoad = function tawkOnLoad() {
       previousOnLoad?.()
-      resolve()
+      finish()
     }
 
-    if (existingScript) return
+    if (existingScript) {
+      window.setTimeout(finish, 0)
+      return
+    }
 
     const script = document.createElement('script')
-    const firstScript = document.getElementsByTagName('script')[0]
     script.async = true
-    script.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`
+    script.src = TAWK_SCRIPT_SRC
     script.charset = 'UTF-8'
-    script.setAttribute('crossorigin', '*')
-    firstScript?.parentNode?.insertBefore(script, firstScript)
+    script.setAttribute('crossorigin', 'anonymous')
+    script.onerror = () => {
+      if (import.meta.env.DEV) {
+        console.warn('[Tawk] Failed to load embed script:', TAWK_SCRIPT_SRC)
+      }
+      finish()
+    }
+    document.body.appendChild(script)
+
+    // Do not block the app if Tawk never calls onLoad (e.g. domain not whitelisted).
+    window.setTimeout(finish, 12_000)
   })
 
   return loadPromise
@@ -45,7 +66,13 @@ export function loadTawk(): Promise<void> {
 
 export async function openTawkChat(): Promise<void> {
   await loadTawk()
-  window.Tawk_API?.maximize?.()
+  if (!window.Tawk_API?.maximize) {
+    if (import.meta.env.DEV) {
+      console.warn('[Tawk] Widget API unavailable — check Tawk dashboard domain settings.')
+    }
+    return
+  }
+  window.Tawk_API.maximize()
 }
 
 export async function setTawkVisitorAttributes(attrs: {
@@ -61,7 +88,9 @@ export async function setTawkVisitorAttributes(attrs: {
       email: attrs.email || '',
     },
     (error) => {
-      if (error) console.warn('Tawk visitor attributes failed', error)
+      if (error && import.meta.env.DEV) {
+        console.warn('[Tawk] Visitor attributes failed', error)
+      }
     },
   )
 }

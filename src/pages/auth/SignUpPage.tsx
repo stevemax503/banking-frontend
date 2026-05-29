@@ -86,23 +86,15 @@ export default function SignUpPage() {
       <AuthFormCard signup>
         <AuthBackLink to="/" label="Back to home" />
 
-        <AuthFormHeader
-          title="Create your account"
-          subtitle="Start your journey with SafaPay — secure, clear, and built for everyday banking."
-        />
+        <AuthFormHeader title="Create your account" />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Input
-              label="Full name"
-              placeholder="Legal full name"
-              error={errors.full_name?.message}
-              {...register('full_name')}
-            />
+            <Input label="Full name" error={errors.full_name?.message} {...register('full_name')} />
             <Input
               label="Email address"
               type="email"
-              placeholder="name@company.com"
+              autoComplete="email"
               error={errors.email?.message}
               {...register('email')}
             />
@@ -112,7 +104,7 @@ export default function SignUpPage() {
             <div>
               <PasswordInput
                 label="Password"
-                placeholder="••••••••"
+                autoComplete="new-password"
                 error={errors.password?.message}
                 {...register('password')}
               />
@@ -120,7 +112,7 @@ export default function SignUpPage() {
             </div>
             <PasswordInput
               label="Confirm password"
-              placeholder="••••••••"
+              autoComplete="new-password"
               error={errors.password_confirm?.message}
               {...register('password_confirm')}
             />

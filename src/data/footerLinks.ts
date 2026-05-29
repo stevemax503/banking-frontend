@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Facebook, Instagram, Linkedin, Twitter, Youtube } from 'lucide-react'
+import { Facebook, Instagram, Linkedin, Twitter } from 'lucide-react'
 
 export type FooterLinkColumn = {
   title: string
@@ -41,7 +41,6 @@ export const SOCIAL_LINKS: SocialLink[] = [
   { id: 'facebook', label: 'Facebook', icon: Facebook },
   { id: 'instagram', label: 'Instagram', icon: Instagram },
   { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-  { id: 'youtube', label: 'YouTube', icon: Youtube },
 ]
 
 export const FOOTER_CONTACT = {

@@ -41,7 +41,7 @@ export default function LandingFooter() {
         aria-hidden
       />
 
-      <div className="relative mx-auto max-w-6xl px-4 pt-10 pb-0 sm:px-6 sm:pt-12">
+      <div className="relative mx-auto max-w-6xl px-6 pt-10 pb-0 sm:px-6 sm:pt-12">
         <div className="mb-8 flex flex-col gap-6 border-b border-white/10 pb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <SafaPayLogo variant="light" size="md" showTagline={false} className="justify-start" />
@@ -52,7 +52,7 @@ export default function LandingFooter() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-10 lg:gap-16">
+        <div className="grid grid-cols-2 gap-8 pl-5 sm:pl-0 sm:grid-cols-3 sm:gap-10 lg:gap-16">
           {FOOTER_COLUMNS.map((column) => (
             <div key={column.title}>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-white">
@@ -113,7 +113,7 @@ export default function LandingFooter() {
       </div>
 
       <div className="relative mt-8 border-t border-white/10 bg-white text-primary-dark">
-        <div className="mx-auto max-w-6xl px-4 py-4 text-center sm:px-6">
+        <div className="mx-auto max-w-6xl px-6 py-4 text-center sm:px-6">
           <p className="text-xs leading-relaxed text-gray-600">
             © {year} {BANK_NAME}. All rights reserved.
           </p>

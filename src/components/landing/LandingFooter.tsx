@@ -115,8 +115,7 @@ export default function LandingFooter() {
       <div className="relative mt-8 border-t border-white/10 bg-white text-primary-dark">
         <div className="mx-auto max-w-6xl px-4 py-4 text-center sm:px-6">
           <p className="text-xs leading-relaxed text-gray-600">
-            © {year} {BANK_NAME}. All rights reserved. Deposits may be eligible for FDIC insurance subject to program
-            terms.
+            © {year} {BANK_NAME}. All rights reserved.
           </p>
         </div>
       </div>

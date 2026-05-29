@@ -737,3 +737,12 @@ body {
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
+/* Tawk.to — keep chat bubble above app chrome and translate UI */
+#tawk-bubble-container,
+.tawk-min-container,
+.tawk-max-container,
+.tawk-button,
+iframe[title*="chat" i] {
+  z-index: 2147483646 !important;
+}

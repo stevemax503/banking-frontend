@@ -7,19 +7,38 @@ const TAWK_SCRIPT_SRC = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET
 
 let loadPromise: Promise<void> | null = null
 
+function isTawkEnabled(): boolean {
+  const flag = import.meta.env.VITE_TAWK_ENABLED
+  if (flag === 'false' || flag === '0') return false
+  return true
+}
+
 function tawkScriptSelector() {
   return `script[src*="embed.tawk.to/${TAWK_PROPERTY_ID}"]`
 }
 
+function isTawkReady() {
+  return typeof window.Tawk_API?.maximize === 'function'
+}
+
+function injectTawkScript() {
+  if (document.querySelector(tawkScriptSelector())) return
+
+  window.Tawk_API = window.Tawk_API || {}
+  window.Tawk_LoadStart = window.Tawk_LoadStart || new Date()
+
+  const script = document.createElement('script')
+  script.async = true
+  script.src = TAWK_SCRIPT_SRC
+  script.charset = 'UTF-8'
+  script.setAttribute('crossorigin', '*')
+  document.body.appendChild(script)
+}
+
+/** Wait for Tawk widget API (script is injected from index.html at build time). */
 export function loadTawk(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.resolve()
-  if (window.Tawk_API?.maximize) return Promise.resolve()
-
-  const existingScript = document.querySelector(tawkScriptSelector())
-  if (existingScript && window.Tawk_API?.onLoad) {
-    return loadPromise ?? Promise.resolve()
-  }
-
+  if (typeof window === 'undefined' || !isTawkEnabled()) return Promise.resolve()
+  if (isTawkReady()) return Promise.resolve()
   if (loadPromise) return loadPromise
 
   loadPromise = new Promise((resolve) => {
@@ -31,34 +50,29 @@ export function loadTawk(): Promise<void> {
     }
 
     window.Tawk_API = window.Tawk_API || {}
-    window.Tawk_LoadStart = new Date()
 
     const previousOnLoad = window.Tawk_API.onLoad
     window.Tawk_API.onLoad = function tawkOnLoad() {
+      window.Tawk_API?.showWidget?.()
       previousOnLoad?.()
       finish()
     }
 
-    if (existingScript) {
-      window.setTimeout(finish, 0)
-      return
+    if (!document.querySelector(tawkScriptSelector())) {
+      injectTawkScript()
     }
 
-    const script = document.createElement('script')
-    script.async = true
-    script.src = TAWK_SCRIPT_SRC
-    script.charset = 'UTF-8'
-    script.setAttribute('crossorigin', 'anonymous')
-    script.onerror = () => {
-      if (import.meta.env.DEV) {
-        console.warn('[Tawk] Failed to load embed script:', TAWK_SCRIPT_SRC)
+    const poll = window.setInterval(() => {
+      if (isTawkReady()) {
+        window.clearInterval(poll)
+        finish()
       }
-      finish()
-    }
-    document.body.appendChild(script)
+    }, 250)
 
-    // Do not block the app if Tawk never calls onLoad (e.g. domain not whitelisted).
-    window.setTimeout(finish, 12_000)
+    window.setTimeout(() => {
+      window.clearInterval(poll)
+      finish()
+    }, 15_000)
   })
 
   return loadPromise
@@ -66,13 +80,8 @@ export function loadTawk(): Promise<void> {
 
 export async function openTawkChat(): Promise<void> {
   await loadTawk()
-  if (!window.Tawk_API?.maximize) {
-    if (import.meta.env.DEV) {
-      console.warn('[Tawk] Widget API unavailable — check Tawk dashboard domain settings.')
-    }
-    return
-  }
-  window.Tawk_API.maximize()
+  if (!isTawkReady()) return
+  window.Tawk_API!.maximize!()
 }
 
 export async function setTawkVisitorAttributes(attrs: {
@@ -87,10 +96,6 @@ export async function setTawkVisitorAttributes(attrs: {
       name: attrs.name || '',
       email: attrs.email || '',
     },
-    (error) => {
-      if (error && import.meta.env.DEV) {
-        console.warn('[Tawk] Visitor attributes failed', error)
-      }
-    },
+    () => {},
   )
 }

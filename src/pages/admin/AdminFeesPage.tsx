@@ -498,9 +498,9 @@ function SectionPanel({
   children: ReactNode
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-white px-4 py-3 sm:px-6">
-        <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+    <section className="overflow-hidden rounded-2xl border-2 border-gray-300 bg-white shadow-[0_6px_28px_-12px_rgba(21,42,30,0.14)] ring-1 ring-gray-200/80">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-200 bg-gradient-to-r from-gray-100/80 via-gray-50/50 to-white px-4 py-3.5 sm:px-6">
+        <h2 className="text-sm font-bold tracking-tight text-gray-900">{title}</h2>
         {action}
       </div>
       <div className="p-4 sm:p-5">{children}</div>
@@ -1063,8 +1063,8 @@ export default function AdminFeesPage() {
   const errDetail = (feesQuery.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail
 
   return (
-    <div className="admin-page space-y-6 pb-8">
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-5">
+    <div className="admin-page space-y-8 pb-10">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-gray-300 bg-white px-4 py-4 shadow-sm ring-1 ring-gray-200/80 sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
             <Settings size={18} strokeWidth={1.75} aria-hidden />
@@ -1247,11 +1247,13 @@ export default function AdminFeesPage() {
           </button>
         }
       >
-        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-gray-600">
-          Add extra compliance fees for specific customers. Customers in{' '}
-          <span className="font-medium text-gray-800">Compliance exemptions</span> above never pay these — or any other
-          compliance fees.
-        </p>
+        <div className="mb-4 rounded-xl border border-sky-100 bg-sky-50/60 px-4 py-3 text-sm leading-relaxed text-sky-950">
+          <p className="font-medium">About per-customer lines</p>
+          <p className="mt-1 text-sky-900/85">
+            Add extra compliance fees for specific customers. Customers in{' '}
+            <strong>Compliance exemptions</strong> above never pay these — or any other compliance fees.
+          </p>
+        </div>
         <div className="mb-4 max-w-md">
           <StyledSelect
             label="Filter by customer"

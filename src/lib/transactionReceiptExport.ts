@@ -209,16 +209,27 @@ export async function shareReceiptBlob(
   blob: Blob,
   filename: string,
   title: string,
-): Promise<'shared' | 'downloaded'> {
+): Promise<'shared' | 'downloaded' | 'cancelled'> {
   const file = new File([blob], filename, { type: blob.type })
-  if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({
-      files: [file],
-      title,
-      text: title,
-    })
-    return 'shared'
+  const canShareFiles =
+    typeof navigator.share === 'function' && Boolean(navigator.canShare?.({ files: [file] }))
+
+  if (canShareFiles) {
+    try {
+      await navigator.share({
+        files: [file],
+        title,
+        text: title,
+      })
+      return 'shared'
+    } catch (err) {
+      // If the user cancels the native share sheet, treat it as a no-op rather than an error.
+      const name = err instanceof Error ? err.name : ''
+      if (name === 'AbortError') return 'cancelled'
+      // Some browsers throw even when canShare returns true; fall back to download.
+    }
   }
+
   triggerBlobDownload(blob, filename)
   return 'downloaded'
 }
@@ -228,7 +239,7 @@ export async function shareReceiptFromCanvas(
   format: ReceiptFormat,
   filename: string,
   title: string,
-): Promise<'shared' | 'downloaded'> {
+): Promise<'shared' | 'downloaded' | 'cancelled'> {
   if (format === 'png') {
     const blob = await canvasToPngBlob(canvas)
     return shareReceiptBlob(blob, filename, title)

@@ -83,14 +83,10 @@ export default function TransactionDetailDrawer({
         }
 
         const result = await shareReceiptFromCanvas(canvas, format, filename, title)
-        if (result === 'shared') {
-          toast.success('Receipt shared.')
-        } else {
-          toast.success(
-            format === 'pdf'
-              ? 'Sharing unavailable — PDF downloaded instead.'
-              : 'Sharing unavailable — image downloaded instead.',
-          )
+        if (result === 'shared') toast.success('Receipt shared.')
+        else if (result === 'cancelled') toast('Share cancelled.')
+        else {
+          toast.success(format === 'pdf' ? 'Sharing unavailable — PDF downloaded instead.' : 'Sharing unavailable — image downloaded instead.')
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Could not export receipt.'

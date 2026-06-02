@@ -10,6 +10,7 @@ import ComplianceFeesModal from '@/components/transactions/ComplianceFeesModal'
 import Spinner from '@/components/ui/Spinner'
 import { formatAccountTypeLabel } from '@/lib/accountDisplay'
 import { formatDisplayCurrency } from '@/utils/format'
+import { accountIdentifierLastFour, formatAccountIdentifierDisplay } from '@/lib/uaeAccount'
 
 type PayoutContext = {
   requires_compliance: boolean
@@ -55,6 +56,7 @@ export default function LoanApplicationPayoutPage() {
   const accounts = (accountsRes?.data?.results || accountsRes?.data || []) as {
     id: string
     account_number: string
+    iban?: string | null
     account_type: string
     balance?: string
   }[]
@@ -237,15 +239,17 @@ export default function LoanApplicationPayoutPage() {
             <option value="">Choose an account</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {formatAccountTypeLabel(a.account_type)} · ••••{a.account_number.slice(-4)}
+                {formatAccountTypeLabel(a.account_type)} · ••••{accountIdentifierLastFour(a)}
                 {a.balance != null ? ` · ${formatDisplayCurrency(a.balance)}` : ''}
               </option>
             ))}
           </StyledSelect>
           {selectedAccount ? (
             <div className="mt-3 rounded-xl border border-primary-dark/10 bg-primary-dark/[0.04] px-3.5 py-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Account number</p>
-              <p className="mt-0.5 font-mono text-sm font-medium text-gray-800">{selectedAccount.account_number}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">IBAN</p>
+              <p className="mt-0.5 font-mono text-sm font-medium text-gray-800">
+                {formatAccountIdentifierDisplay(selectedAccount)}
+              </p>
               {selectedAccount.balance != null ? (
                 <p className="mt-1 text-xs text-gray-600">
                   Available balance{' '}

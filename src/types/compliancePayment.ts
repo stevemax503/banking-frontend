@@ -13,6 +13,7 @@ export type CompliancePaymentInstructions = {
   wire: {
     beneficiary_name?: string
     bank_name?: string
+    bank_address?: string
     swift_bic?: string
     iban?: string
     account_number?: string

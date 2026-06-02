@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { QRCodeSVG } from 'qrcode.react'
 import { ArrowLeft, Banknote, Bitcoin, Copy, Landmark, Loader2, Paperclip, Shield, X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { formatDisplayCurrency } from '@/utils/format'
+import { countryDisplayName, useLocationDataset } from '@/lib/locationData'
 import type {
   CompliancePaymentInstructions,
   CompliancePaymentMethodOption,
@@ -21,6 +22,8 @@ type Props = {
   paymentReference: string
   instructions: CompliancePaymentInstructions
   anchorToMain?: boolean
+  /** Where the customer can resume this flow after closing the modal. */
+  resumeFrom?: 'loan' | 'transfer'
 }
 
 type CryptoAssetId = 'btc' | 'usdt' | 'eth'
@@ -97,38 +100,107 @@ function CopyField({ label, value, highlight }: { label: string; value: string; 
   )
 }
 
-function WireHighlightField({ label, value }: { label: string; value: string }) {
-  if (!value) return null
+function WireDetailRow({
+  label,
+  value,
+  emphasis,
+}: {
+  label: string
+  value: string
+  emphasis?: boolean
+}) {
+  if (!value.trim()) return null
   return (
-    <div className="rounded-xl bg-primary-dark/[0.05] px-3 py-3 text-center ring-1 ring-inset ring-primary-dark/10">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
-      <p className="mt-1 break-all font-mono text-sm font-semibold leading-snug text-gray-900">{value}</p>
+    <div className="flex items-start gap-2 px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+        <p
+          className={cn(
+            'mt-0.5 break-words leading-snug text-gray-900',
+            emphasis ? 'font-mono text-sm font-bold' : 'font-mono text-xs font-medium',
+          )}
+        >
+          {value}
+        </p>
+      </div>
       <button
         type="button"
         onClick={copyValue(value, label)}
-        className="mt-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-primary-dark transition hover:bg-white"
+        className="mt-0.5 shrink-0 rounded-md p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-primary-dark"
+        aria-label={`Copy ${label}`}
       >
-        <Copy size={11} aria-hidden />
-        Copy
+        <Copy size={14} aria-hidden />
       </button>
     </div>
   )
 }
 
-function WireCompactField({ label, value }: { label: string; value: string }) {
-  if (!value.trim()) return null
+function WireSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg bg-white px-2.5 py-2.5 text-center ring-1 ring-inset ring-gray-100">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
-      <p className="mt-1 break-all font-mono text-[11px] font-medium leading-snug text-gray-900">{value}</p>
-      <button
-        type="button"
-        onClick={copyValue(value, label)}
-        className="mt-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-primary-dark transition hover:bg-gray-50"
-      >
-        <Copy size={11} aria-hidden />
-        Copy
-      </button>
+    <section>
+      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</h4>
+      {children}
+    </section>
+  )
+}
+
+function WirePanel({
+  wire,
+  amount,
+  currency,
+  reference,
+}: {
+  wire: CompliancePaymentInstructions['wire']
+  amount: string
+  currency: string
+  reference: string
+}) {
+  const { data: csc } = useLocationDataset()
+  const beneficiaryName = (wire.beneficiary_name ?? '').trim()
+  const bankName = (wire.bank_name ?? '').trim()
+  const bankAddress = (wire.bank_address ?? '').trim()
+  const swiftBic = (wire.swift_bic ?? '').trim()
+  const iban = (wire.iban ?? '').trim()
+  const accountNumber = (wire.account_number ?? '').trim()
+  const accountLabel = iban ? 'IBAN' : 'Account number'
+  const accountValue = iban || accountNumber
+  const countryRaw = (wire.country ?? '').trim()
+  const countryLabel = countryRaw ? countryDisplayName(csc, countryRaw) : ''
+
+  const accountRows = [
+    { label: 'Beneficiary', value: beneficiaryName },
+    { label: 'Bank', value: bankName },
+    { label: 'Bank address', value: bankAddress },
+    { label: 'SWIFT / BIC', value: swiftBic },
+    { label: accountLabel, value: accountValue },
+    { label: 'Country', value: countryLabel },
+  ].filter((row) => row.value)
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+      <p className="rounded-lg bg-sky-50 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-sky-950 ring-1 ring-sky-100">
+        Send a SWIFT wire transfer using the amount, reference, and bank details below.
+      </p>
+
+      <WireSection title="Your payment">
+        <div className="overflow-hidden rounded-xl border border-primary-dark/10 bg-primary-dark/[0.03] divide-y divide-primary-dark/10">
+          <WireDetailRow label="Amount" value={`${currency} ${formatDisplayCurrency(amount)}`} emphasis />
+          <WireDetailRow label="Payment reference" value={reference} emphasis />
+        </div>
+        <p className="mt-1.5 text-[10px] leading-relaxed text-amber-900/90">
+          Include the payment reference exactly — your wire may not be matched without it.
+        </p>
+      </WireSection>
+
+      {accountRows.length > 0 ? (
+        <WireSection title="Wire to this account">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+            {accountRows.map((row) => (
+              <WireDetailRow key={row.label} label={row.label} value={row.value} />
+            ))}
+          </div>
+        </WireSection>
+      ) : null}
     </div>
   )
 }
@@ -163,66 +235,14 @@ function Segmented<T extends string>({
   )
 }
 
-function WirePanel({
-  wire,
-  amount,
-  currency,
-  reference,
-}: {
-  wire: CompliancePaymentInstructions['wire']
-  amount: string
-  currency: string
-  reference: string
-}) {
-  const iban = (wire.iban ?? '').trim()
-  const accountNumber = (wire.account_number ?? '').trim()
-  const accountLabel = iban ? 'IBAN' : 'Account number'
-  const accountValue = iban || accountNumber
-
-  const bankDetails = [
-    { label: 'Beneficiary', value: (wire.beneficiary_name ?? '').trim() },
-    { label: 'Bank', value: (wire.bank_name ?? '').trim() },
-    { label: 'SWIFT / BIC', value: (wire.swift_bic ?? '').trim() },
-    { label: accountLabel, value: accountValue },
-  ].filter((row) => row.value)
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5">
-      <p className="rounded-md bg-sky-50 px-3 py-2 text-center text-[10px] font-medium leading-relaxed text-sky-950 ring-1 ring-sky-100">
-        Send a SWIFT wire transfer. Include your payment reference exactly as shown below.
-      </p>
-
-      <div className="grid grid-cols-2 gap-2">
-        <WireHighlightField label="Amount" value={`${currency} ${formatDisplayCurrency(amount)}`} />
-        <WireHighlightField label="Reference" value={reference} />
-      </div>
-
-      {bankDetails.length > 0 ? (
-        <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
-          <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Bank details
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {bankDetails.map((row) => (
-              <WireCompactField key={row.label} label={row.label} value={row.value} />
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 function CryptoPanel({
   crypto,
   amount,
   currency,
-  reference,
 }: {
   crypto: CompliancePaymentInstructions['crypto']
   amount: string
   currency: string
-  reference: string
 }) {
   const assets = useMemo(() => {
     const list: CryptoAssetId[] = []
@@ -308,7 +328,6 @@ function CryptoPanel({
         </div>
         <div className="flex min-w-0 flex-col justify-center gap-1.5">
           <CopyField label="Amount" value={`${formatDisplayCurrency(amount)} ${currency}`} highlight />
-          <CopyField label="Reference" value={reference} highlight />
           <CopyField label={`${symbol} address`} value={address} />
         </div>
       </div>
@@ -327,6 +346,7 @@ export default function CompliancePaymentModal({
   paymentReference,
   instructions,
   anchorToMain = true,
+  resumeFrom = 'transfer',
 }: Props) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const [method, setMethod] = useState<CompliancePaymentMethodOption>('crypto')
@@ -380,12 +400,14 @@ export default function CompliancePaymentModal({
             </div>
             <div>
               <h3 className="text-sm font-semibold tracking-tight">Pay compliance fee</h3>
-              <p className="mt-0.5 text-[11px] text-white/75">Resume anytime from Loans</p>
+              <p className="mt-0.5 text-[11px] text-white/75">
+                Resume anytime from {resumeFrom === 'loan' ? 'Loans' : 'Transactions'}
+              </p>
             </div>
           </div>
           <div className="mt-3 flex items-end justify-between gap-3">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wider text-white/60">{feeName}</p>
+              <p className="text-[11px] font-medium text-white/75">Fee · {feeName}</p>
               <p className="text-2xl font-bold tabular-nums">{formatDisplayCurrency(feeAmount)}</p>
             </div>
             <span className="rounded-md bg-white/15 px-2 py-1 text-[10px] font-semibold ring-1 ring-white/20">
@@ -414,7 +436,6 @@ export default function CompliancePaymentModal({
               crypto={instructions.crypto}
               amount={feeAmount}
               currency={feeCurrency}
-              reference={paymentReference}
             />
           ) : instructions.wire_enabled ? (
             <WirePanel wire={instructions.wire} amount={feeAmount} currency={feeCurrency} reference={paymentReference} />

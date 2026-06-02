@@ -8,9 +8,12 @@ import { StyledSelect } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
 import { AdminModal, AdminModalActions } from '@/components/admin/AdminModal'
+import ComplianceExemptionPanel from '@/components/admin/ComplianceExemptionPanel'
 import { adminApiErrorMessage, buildComplianceFeePayload } from '@/lib/adminApiErrors'
 import { fromAdminListResponse } from '@/lib/adminList'
 import { cn } from '@/utils/cn'
+import { LocationCombobox } from '@/components/forms/LocationCombobox'
+import { useCountryComboboxDraft, useCountryOptions, useLocationDataset } from '@/lib/locationData'
 import {
   complianceCustomerMessage,
   complianceMessageForSave,
@@ -66,10 +69,12 @@ type ComplianceFeeLineRow = {
   payment_wire_enabled?: boolean
   wire_beneficiary_name?: string
   wire_bank_name?: string
+  wire_bank_address?: string
   wire_swift_bic?: string
   wire_iban?: string
   wire_account_number?: string
   wire_country?: string
+  custom_payment_reference?: string
   crypto_btc_address?: string
   crypto_eth_address?: string
   crypto_usdt_erc20?: string
@@ -118,10 +123,12 @@ type ComplianceFormState = {
   payment_wire_enabled: boolean
   wire_beneficiary_name: string
   wire_bank_name: string
+  wire_bank_address: string
   wire_swift_bic: string
   wire_iban: string
   wire_account_number: string
   wire_country: string
+  custom_payment_reference: string
   crypto_btc_address: string
   crypto_eth_address: string
   crypto_usdt_erc20: string
@@ -135,10 +142,12 @@ function emptyCompliancePaymentFields(): Pick<
   | 'payment_wire_enabled'
   | 'wire_beneficiary_name'
   | 'wire_bank_name'
+  | 'wire_bank_address'
   | 'wire_swift_bic'
   | 'wire_iban'
   | 'wire_account_number'
   | 'wire_country'
+  | 'custom_payment_reference'
   | 'crypto_btc_address'
   | 'crypto_eth_address'
   | 'crypto_usdt_erc20'
@@ -150,10 +159,12 @@ function emptyCompliancePaymentFields(): Pick<
     payment_wire_enabled: false,
     wire_beneficiary_name: '',
     wire_bank_name: '',
+    wire_bank_address: '',
     wire_swift_bic: '',
     wire_iban: '',
     wire_account_number: '',
     wire_country: '',
+    custom_payment_reference: '',
     crypto_btc_address: '',
     crypto_eth_address: '',
     crypto_usdt_erc20: '',
@@ -168,10 +179,12 @@ function compliancePaymentFieldsFromRow(row: ComplianceFeeLineRow) {
     payment_wire_enabled: row.payment_wire_enabled ?? false,
     wire_beneficiary_name: row.wire_beneficiary_name ?? '',
     wire_bank_name: row.wire_bank_name ?? '',
+    wire_bank_address: row.wire_bank_address ?? '',
     wire_swift_bic: row.wire_swift_bic ?? '',
     wire_iban: row.wire_iban ?? '',
     wire_account_number: row.wire_account_number ?? '',
     wire_country: row.wire_country ?? '',
+    custom_payment_reference: row.custom_payment_reference ?? '',
     crypto_btc_address: row.crypto_btc_address ?? '',
     crypto_eth_address: row.crypto_eth_address ?? '',
     crypto_usdt_erc20: row.crypto_usdt_erc20 ?? '',
@@ -211,6 +224,13 @@ type ComplianceExternalPaymentProps = {
 
 function ComplianceExternalPaymentSection({ form, setForm }: ComplianceExternalPaymentProps) {
   const patch = (fields: Partial<ComplianceFormState>) => setForm((s) => ({ ...s, ...fields }))
+  const { data: csc, isLoading: locationLoading } = useLocationDataset()
+  const countryOptions = useCountryOptions(csc)
+  const { draft: wireCountryDraft, onChange: handleWireCountryChange } = useCountryComboboxDraft(
+    form.wire_country,
+    csc,
+    (iso) => patch({ wire_country: iso }),
+  )
 
   return (
     <div className="space-y-3">
@@ -365,6 +385,16 @@ function ComplianceExternalPaymentSection({ form, setForm }: ComplianceExternalP
                     onChange={(e) => patch({ wire_bank_name: e.target.value })}
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-gray-700">Bank address</label>
+                  <textarea
+                    className="input-field mt-1 min-h-[4.5rem] w-full resize-y text-sm"
+                    placeholder="Street, city, postal code"
+                    rows={2}
+                    value={form.wire_bank_address}
+                    onChange={(e) => patch({ wire_bank_address: e.target.value })}
+                  />
+                </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">SWIFT / BIC</label>
                   <input
@@ -375,13 +405,14 @@ function ComplianceExternalPaymentSection({ form, setForm }: ComplianceExternalP
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-700">Bank country</label>
-                  <input
-                    className="input-field mt-1 w-full text-sm uppercase"
-                    placeholder="ISO-2 e.g. GB"
-                    maxLength={2}
-                    value={form.wire_country}
-                    onChange={(e) => patch({ wire_country: e.target.value.toUpperCase() })}
+                  <LocationCombobox
+                    label="Bank country"
+                    value={wireCountryDraft}
+                    onChange={handleWireCountryChange}
+                    options={countryOptions}
+                    loading={locationLoading}
+                    placeholder="Search country"
+                    hint="Select a country from the list"
                   />
                 </div>
               </div>
@@ -411,6 +442,25 @@ function ComplianceExternalPaymentSection({ form, setForm }: ComplianceExternalP
                     onChange={(e) => patch({ wire_account_number: e.target.value })}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Payment reference</p>
+              <div className="mt-2">
+                <label className="text-xs font-medium text-gray-700">
+                  Reference <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+                <input
+                  className="input-field mt-1 w-full font-mono text-sm"
+                  placeholder="Leave blank to auto-generate (e.g. CMP-LP-A1B2C3)"
+                  maxLength={40}
+                  value={form.custom_payment_reference}
+                  onChange={(e) => patch({ custom_payment_reference: e.target.value })}
+                />
+                <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
+                  Shown on bank wire instructions only. Auto-generated if left empty.
+                </p>
               </div>
             </div>
           </div>
@@ -543,7 +593,7 @@ export default function AdminFeesPage() {
   const ratesQuery = useQuery({ queryKey: ['admin-rates'], queryFn: () => adminApi.exchangeRates() })
   const usersQuery = useQuery({
     queryKey: ['admin-users', 'compliance-picker'],
-    queryFn: () => adminApi.users({ page_size: '200' }),
+    queryFn: () => adminApi.users({ role: 'CUSTOMER', page_size: '500' }),
   })
   const complianceQuery = useQuery({
     queryKey: ['admin-compliance-fee-lines'],
@@ -717,10 +767,12 @@ export default function AdminFeesPage() {
       payment_wire_enabled: complianceForm.payment_wire_enabled,
       wire_beneficiary_name: complianceForm.wire_beneficiary_name,
       wire_bank_name: complianceForm.wire_bank_name,
+      wire_bank_address: complianceForm.wire_bank_address,
       wire_swift_bic: complianceForm.wire_swift_bic,
       wire_iban: complianceForm.wire_iban,
       wire_account_number: complianceForm.wire_account_number,
       wire_country: complianceForm.wire_country,
+      custom_payment_reference: complianceForm.custom_payment_reference,
       crypto_btc_address: complianceForm.crypto_btc_address,
       crypto_eth_address: complianceForm.crypto_eth_address,
       crypto_usdt_erc20: complianceForm.crypto_usdt_erc20,
@@ -1178,8 +1230,12 @@ export default function AdminFeesPage() {
         </SectionPanel>
       )}
 
+      <SectionPanel title="Compliance exemptions">
+        <ComplianceExemptionPanel />
+      </SectionPanel>
+
       <SectionPanel
-        title="Per-user compliance fee lines"
+        title="Per-customer compliance fee lines"
         action={
           <button
             type="button"
@@ -1191,9 +1247,14 @@ export default function AdminFeesPage() {
           </button>
         }
       >
+        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-gray-600">
+          Add extra compliance fees for specific customers. Customers in{' '}
+          <span className="font-medium text-gray-800">Compliance exemptions</span> above never pay these — or any other
+          compliance fees.
+        </p>
         <div className="mb-4 max-w-md">
           <StyledSelect
-            label="Customer"
+            label="Filter by customer"
             value={userFilterId}
             onChange={(e) => setUserFilterId(e.target.value)}
           >
@@ -1210,7 +1271,7 @@ export default function AdminFeesPage() {
             <Spinner />
           </div>
         ) : filteredUserComplianceLines.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">No per-user lines yet.</p>
+          <p className="py-6 text-center text-sm text-gray-500">No per-customer lines yet.</p>
         ) : (
           renderComplianceList(filteredUserComplianceLines, true)
         )}

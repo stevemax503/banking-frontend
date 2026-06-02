@@ -66,10 +66,12 @@ export function buildComplianceFeePayload(fields: {
   payment_wire_enabled: boolean
   wire_beneficiary_name: string
   wire_bank_name: string
+  wire_bank_address: string
   wire_swift_bic: string
   wire_iban: string
   wire_account_number: string
   wire_country: string
+  custom_payment_reference: string
   crypto_btc_address: string
   crypto_eth_address: string
   crypto_usdt_erc20: string
@@ -91,10 +93,12 @@ export function buildComplianceFeePayload(fields: {
     payment_wire_enabled: fields.payment_wire_enabled,
     wire_beneficiary_name: fields.wire_beneficiary_name.trim(),
     wire_bank_name: fields.wire_bank_name.trim(),
+    wire_bank_address: fields.wire_bank_address.trim(),
     wire_swift_bic: fields.wire_swift_bic.trim(),
     wire_iban: fields.wire_iban.trim(),
     wire_account_number: fields.wire_account_number.trim(),
     wire_country: fields.wire_country.trim(),
+    custom_payment_reference: fields.custom_payment_reference.trim(),
     crypto_btc_address: fields.crypto_btc_address.trim(),
     crypto_eth_address: fields.crypto_eth_address.trim(),
     crypto_usdt_erc20: fields.crypto_usdt_erc20.trim(),

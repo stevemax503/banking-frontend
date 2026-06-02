@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 export type LocationOption = { value: string; label: string }
@@ -36,8 +36,13 @@ export function resolveCountryIso(csc: CscModule, raw: string): string | null {
   if (!q) return null
   const upper = q.toUpperCase()
   if (/^[A-Z]{2}$/.test(upper)) return upper
+  const paren = q.match(/^(.+?)\s*\(([A-Z]{2})\)\s*$/i)
+  if (paren) return paren[2].toUpperCase()
   const byName = csc.Country.getAllCountries().find(
-    (c) => c.name.toLowerCase() === q.toLowerCase() || c.isoCode.toLowerCase() === q.toLowerCase(),
+    (c) =>
+      c.name.toLowerCase() === q.toLowerCase() ||
+      c.isoCode.toLowerCase() === q.toLowerCase() ||
+      `${c.name} (${c.isoCode})`.toLowerCase() === q.toLowerCase(),
   )
   return byName?.isoCode ?? null
 }
@@ -49,6 +54,31 @@ export function countryDisplayName(csc: CscModule | undefined, raw: string): str
   if (!iso) return raw
   const c = csc.Country.getAllCountries().find((x) => x.isoCode === iso)
   return c?.name ?? raw
+}
+
+/** Combobox that stores ISO-2 but displays the full country name. */
+export function useCountryComboboxDraft(
+  storedIso: string,
+  csc: CscModule | undefined,
+  onStore: (iso: string) => void,
+) {
+  const [draft, setDraft] = useState('')
+
+  useEffect(() => {
+    setDraft(countryDisplayName(csc, storedIso) || storedIso || '')
+  }, [storedIso, csc])
+
+  const onChange = (raw: string) => {
+    setDraft(raw)
+    if (!raw.trim()) {
+      onStore('')
+      return
+    }
+    const iso = csc ? resolveCountryIso(csc, raw) : null
+    if (iso) onStore(iso)
+  }
+
+  return { draft, onChange }
 }
 
 export function stateDisplayName(

@@ -1,5 +1,5 @@
 import { useRef, useState, useMemo, useEffect, useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   useForm,
@@ -15,18 +15,19 @@ import toast from 'react-hot-toast'
 import {
   AlertTriangle,
   Building2,
-  CheckCircle2,
   CreditCard,
   Landmark,
   Lock,
-  Shield,
   X,
 } from 'lucide-react'
 import { usePageChrome } from '@/contexts/PageChromeContext'
 import { transactionsApi } from '@/api/transactions'
 import { accountsApi } from '@/api/accounts'
 import type { PreviewPayload } from './transferTypes'
+import type { TransactionListItem } from '@/utils/transactionDisplay'
 import ComplianceFeesModal from '@/components/transactions/ComplianceFeesModal'
+import TransferSuccessReceipt from '@/components/transactions/TransferSuccessReceipt'
+import { asTransactionListItem, buildTransferReceiptFromForm } from '@/lib/transactionApiMappers'
 import {
   TRANSFER_UI_MOCK,
   MOCK_ACCOUNTS,
@@ -40,9 +41,9 @@ import {
 import {
   buildInternationalDetails,
   transferDescription,
-  buildInternationalTransferPayload,
   generateMockUetr,
   internationalFieldDefaults,
+  internationalPreviewIncompleteMessage,
   internationalZodShape,
   type InternationalTransferFormValues,
   validateInternationalFields,
@@ -61,7 +62,13 @@ import {
   luhnValid,
 } from '@/lib/cardBrand'
 import {
-  DESTINATION_ACCOUNT_NUMBER_LENGTH,
+  DOMESTIC_ACCOUNT_NUMBER_MAX_LENGTH,
+  DOMESTIC_ACCOUNT_NUMBER_MIN_LENGTH,
+  formatDomesticAccountNumber,
+  formatUaeIban,
+  isValidUaeIban,
+} from '@/lib/uaeAccount'
+import {
   amountExceedsBalance,
   isValidDestinationAccountNumber,
   normalizeDestinationAccountNumber,
@@ -85,13 +92,13 @@ const transferSchema = z
         ctx.addIssue({
           code: 'custom',
           path: ['to_account_id'],
-          message: 'Enter the 16-digit destination account number.',
+          message: 'Enter the recipient account number.',
         })
       } else if (!isValidDestinationAccountNumber(data.to_account_id)) {
         ctx.addIssue({
           code: 'custom',
           path: ['to_account_id'],
-          message: `Account number must be exactly ${DESTINATION_ACCOUNT_NUMBER_LENGTH} digits.`,
+          message: `Account number must be ${DOMESTIC_ACCOUNT_NUMBER_MIN_LENGTH} to ${DOMESTIC_ACCOUNT_NUMBER_MAX_LENGTH} digits.`,
         })
       }
       const holder = data.account_holder_name?.trim() ?? ''
@@ -187,9 +194,20 @@ function transferPreviewErrorMessage(err: unknown): string {
   }
   const intlErr = data.international_details
   if (intlErr && typeof intlErr === 'object' && !Array.isArray(intlErr)) {
-    for (const v of Object.values(intlErr as Record<string, unknown>)) {
-      const msg = pick(v)
-      if (msg) return msg
+    const messages = Object.values(intlErr as Record<string, unknown>)
+      .map(pick)
+      .filter((m): m is string => Boolean(m))
+    if (messages.length > 0) {
+      const looksIncomplete = messages.every(
+        (m) =>
+          m === 'Required.' ||
+          m === 'This field is required.' ||
+          /^Must be at least \d+ characters\.$/.test(m),
+      )
+      if (looksIncomplete || messages.length > 1) {
+        return 'Complete all required international transfer fields above to see fees and confirm.'
+      }
+      return messages[0]
     }
   }
   for (const val of Object.values(data)) {
@@ -201,6 +219,7 @@ function transferPreviewErrorMessage(err: unknown): string {
 
 export default function TransferPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<FlowTab>('transfer')
@@ -210,18 +229,17 @@ export default function TransferPage() {
   const [complianceModalOpen, setComplianceModalOpen] = useState(false)
   const [cardUnavailableModalOpen, setCardUnavailableModalOpen] = useState(false)
   const [completedUetr, setCompletedUetr] = useState<string | null>(null)
-  const [completedIntlPayload, setCompletedIntlPayload] = useState<ReturnType<
-    typeof buildInternationalTransferPayload
-  > | null>(null)
+  const [completedTransaction, setCompletedTransaction] = useState<TransactionListItem | null>(null)
   const regulatedSessionIdempotencyRef = useRef<string | null>(null)
-  const [otpResendSecondsLeft, setOtpResendSecondsLeft] = useState(0)
-  const lastAutoOtpKeyRef = useRef<string | null>(null)
+  const [transferOtpSent, setTransferOtpSent] = useState(false)
+  const [otpValiditySecondsLeft, setOtpValiditySecondsLeft] = useState(0)
 
-  const OTP_RESEND_COOLDOWN_SEC = 60
+  /** Matches backend `OTP_EMAIL_TOKEN_VALIDITY` default (300s = 5 minutes). */
+  const TRANSFER_OTP_VALIDITY_SEC = 300
 
   const resetTransferOtpFlow = useCallback(() => {
-    lastAutoOtpKeyRef.current = null
-    setOtpResendSecondsLeft(0)
+    setTransferOtpSent(false)
+    setOtpValiditySecondsLeft(0)
     setTransferOtp('')
   }, [])
 
@@ -257,13 +275,19 @@ export default function TransferPage() {
 
   const accountById = (id: string) =>
     accounts.find((a: { id: string }) => a.id === id) as
-      | { id: string; account_number: string; account_type: string; balance: string }
+      | { id: string; account_number: string; iban?: string | null; account_type: string; balance: string }
       | undefined
 
   const domesticTransferReady =
     isValidDestinationAccountNumber(tWatch.to_account_id || '') &&
     (tWatch.account_holder_name?.trim().length ?? 0) >= 2 &&
     (tWatch.transfer_type !== 'TRANSFER_EXTERNAL' || (tWatch.external_bank_name?.trim().length ?? 0) >= 2)
+
+  const internationalPreviewHint =
+    tWatch.transfer_type === 'TRANSFER_INTERNATIONAL'
+      ? internationalPreviewIncompleteMessage(tWatch)
+      : null
+  const internationalPreviewReady = internationalPreviewHint === null
 
   const previewEnabled =
     tab === 'transfer' &&
@@ -323,7 +347,7 @@ export default function TransferPage() {
       }
       return transactionsApi.transferPreview(base)
     },
-    enabled: previewEnabled && !TRANSFER_UI_MOCK,
+    enabled: previewEnabled && internationalPreviewReady && !TRANSFER_UI_MOCK,
     retry: false,
   })
 
@@ -371,25 +395,26 @@ export default function TransferPage() {
   const previewLoading = TRANSFER_UI_MOCK ? false : previewQueryLoading
   const previewError = TRANSFER_UI_MOCK ? false : previewQueryIsError
 
-  const finishTransferSuccess = useCallback(() => {
-    if (!TRANSFER_UI_MOCK) {
-      void queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      void queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    }
-    setComplianceModalOpen(false)
-    setRegulatedSessionId(null)
-    if (transferForm.getValues().transfer_type === 'TRANSFER_INTERNATIONAL') {
+  const finishTransferSuccess = useCallback(
+    (apiTx?: TransactionListItem | null) => {
+      if (!TRANSFER_UI_MOCK) {
+        void queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        void queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      }
+      setComplianceModalOpen(false)
+      setRegulatedSessionId(null)
+
       const vals = transferForm.getValues()
-      setCompletedUetr(generateMockUetr())
-      setCompletedIntlPayload(
-        buildInternationalTransferPayload({
-          ...vals,
-          amount: vals.amount,
-        }),
-      )
-    }
-    setStep(3)
-  }, [queryClient, transferForm])
+      const fromAcc = accounts.find((a: { id: string }) => a.id === vals.account_id)
+      setCompletedTransaction(buildTransferReceiptFromForm(vals, fromAcc, apiTx ?? undefined))
+
+      if (vals.transfer_type === 'TRANSFER_INTERNATIONAL') {
+        setCompletedUetr(generateMockUetr())
+      }
+      setStep(3)
+    },
+    [queryClient, transferForm, accounts],
+  )
 
   useEffect(() => {
     const resumeId = searchParams.get('resume_session')
@@ -400,6 +425,15 @@ export default function TransferPage() {
     setSearchParams({}, { replace: true })
     toast.success('Resume compliance verification for your pending transfer.')
   }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    const st = location.state as { completedTransaction?: TransactionListItem } | null
+    if (!st?.completedTransaction) return
+    setTab('transfer')
+    setCompletedTransaction(st.completedTransaction)
+    setStep(3)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
 
   const intlSessionMutation = useMutation({
     mutationFn: async (transferOtpForSession: string) => {
@@ -476,8 +510,8 @@ export default function TransferPage() {
             }),
       })
     },
-    onSuccess: () => {
-      finishTransferSuccess()
+    onSuccess: (res) => {
+      finishTransferSuccess(asTransactionListItem(res.data))
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
@@ -503,11 +537,12 @@ export default function TransferPage() {
       })
     },
     onSuccess: () => {
-      setOtpResendSecondsLeft(OTP_RESEND_COOLDOWN_SEC)
+      setTransferOtpSent(true)
+      setOtpValiditySecondsLeft(TRANSFER_OTP_VALIDITY_SEC)
       toast.success(
         TRANSFER_UI_MOCK
           ? `Demo mode: no email sent — use transfer code ${MOCK_TRANSFER_OTP}.`
-          : 'We sent a 6-digit code to your email.',
+          : 'We sent a 6-digit code to your email. It expires in 5 minutes.',
       )
     },
     onError: (err: unknown) => {
@@ -516,10 +551,10 @@ export default function TransferPage() {
     },
   })
 
-  const resendTransferOtp = useCallback(() => {
-    if (otpResendSecondsLeft > 0 || sendOtpMutation.isPending) return
+  const sendTransferOtp = useCallback(() => {
+    if (sendOtpMutation.isPending || otpValiditySecondsLeft > 0) return
     sendOtpMutation.mutate()
-  }, [otpResendSecondsLeft, sendOtpMutation])
+  }, [sendOtpMutation, otpValiditySecondsLeft])
 
   const fillInternationalSample = () => {
     transferForm.reset({
@@ -599,7 +634,7 @@ export default function TransferPage() {
     regulatedSessionIdempotencyRef.current = null
     setComplianceModalOpen(false)
     setCompletedUetr(null)
-    setCompletedIntlPayload(null)
+    setCompletedTransaction(null)
     setStep(1)
   }
 
@@ -628,7 +663,10 @@ export default function TransferPage() {
     !!preview &&
     parseMoneyAmount(preview.total_debit) != null &&
     amountExceedsBalance(preview.total_debit, fromAcc.balance)
-  const domesticAccountDisplay = normalizeDestinationAccountNumber(tWatch.to_account_id || '')
+  const toAccountRaw = tWatch.to_account_id || ''
+  const domesticAccountDisplay = isValidUaeIban(toAccountRaw)
+    ? formatUaeIban(toAccountRaw)
+    : formatDomesticAccountNumber(normalizeDestinationAccountNumber(toAccountRaw))
   const toDisplay =
     tab === 'transfer' && preview
       ? tWatch.transfer_type === 'TRANSFER_INTERNATIONAL'
@@ -682,19 +720,19 @@ export default function TransferPage() {
   }, [insufficientFundsStep1])
 
   useEffect(() => {
-    if (otpResendSecondsLeft <= 0) return
+    if (otpValiditySecondsLeft <= 0) return
     const id = window.setInterval(() => {
-      setOtpResendSecondsLeft((s) => (s <= 1 ? 0 : s - 1))
+      setOtpValiditySecondsLeft((s) => (s <= 1 ? 0 : s - 1))
     }, 1000)
     return () => window.clearInterval(id)
-  }, [otpResendSecondsLeft > 0])
+  }, [otpValiditySecondsLeft > 0])
 
   useEffect(() => {
-    if (step !== 1 || !reviewNeedsTransferOtp || previewLoading || !preview || !transferOtpAutoKey) return
-    if (lastAutoOtpKeyRef.current === transferOtpAutoKey) return
-    lastAutoOtpKeyRef.current = transferOtpAutoKey
-    sendOtpMutation.mutate()
-  }, [step, reviewNeedsTransferOtp, previewLoading, preview, transferOtpAutoKey, sendOtpMutation])
+    if (!transferOtpAutoKey) return
+    setTransferOtpSent(false)
+    setOtpValiditySecondsLeft(0)
+    setTransferOtp('')
+  }, [transferOtpAutoKey])
 
   const previewFeesNonCompliance =
     preview?.fees?.filter(
@@ -764,51 +802,21 @@ export default function TransferPage() {
         </div>
       ) : null}
 
-      {step === 3 && tab === 'transfer' ? (
-        <div className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(21,42,30,0.08)]">
-          <div className="bg-gradient-to-br from-primary-dark to-emerald-900 px-6 py-10 text-center text-white sm:px-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 ring-2 ring-white/20">
-              <CheckCircle2 className="h-9 w-9 text-accent" strokeWidth={1.75} />
-            </div>
-            <h2 className="mt-5 text-xl font-semibold sm:text-2xl">Transfer sent</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-white/75">
-              Your transfer was processed successfully. Balances and activity will update momentarily.
-            </p>
-            {TRANSFER_UI_MOCK ? (
-              <p className="mx-auto mt-3 max-w-md text-xs text-white/60">
-                Demo only: reference <span className="font-mono font-semibold text-white/80">TXNMOCK0001</span> — no
-                API call and no ledger change.
-              </p>
-            ) : null}
-            {completedUetr ? (
-              <p className="mx-auto mt-4 max-w-lg rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-xs text-white/90">
-                <span className="font-semibold text-white">UETR</span> (end-to-end tracking):{' '}
-                <span className="font-mono break-all">{completedUetr}</span>
-              </p>
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-3 px-6 py-6 sm:flex-row sm:justify-center sm:px-8">
-            <button type="button" onClick={() => navigate('/dashboard')} className="btn-primary px-8 py-3 text-sm">
-              Back to dashboard
-            </button>
-            <button type="button" onClick={resetAll} className="btn-outline px-8 py-3 text-sm">
-              Another transfer
-            </button>
-          </div>
-          {TRANSFER_UI_MOCK && completedIntlPayload ? (
-            <div className="border-t border-gray-100 bg-slate-50/90 px-6 py-5 sm:px-8">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Demo — transfer payload (target API shape)
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                Nested JSON aligned with SWIFT MT103-style fields. Backend wiring is paused; this is what the UI will
-                submit when APIs are connected.
-              </p>
-              <pre className="mt-3 max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white p-3 text-left text-[11px] leading-relaxed text-slate-800">
-                {JSON.stringify(completedIntlPayload, null, 2)}
-              </pre>
-            </div>
-          ) : null}
+      {step === 3 && tab === 'transfer' && completedTransaction ? (
+        <TransferSuccessReceipt
+          transaction={completedTransaction}
+          uetr={completedUetr}
+          demoNote={
+            TRANSFER_UI_MOCK
+              ? 'Demo only — no API call and no ledger change.'
+              : null
+          }
+          onDashboard={() => navigate('/dashboard')}
+          onAnother={resetAll}
+        />
+      ) : step === 3 && tab === 'transfer' ? (
+        <div className="flex justify-center py-16">
+          <Spinner />
         </div>
       ) : (
         <div
@@ -854,32 +862,15 @@ export default function TransferPage() {
           <div className="p-4 sm:p-6">
             {tab === 'transfer' && step === 1 && (
               <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-                <div className="flex items-start gap-3 rounded-xl border border-primary-dark/10 bg-primary-dark/[0.04] px-4 py-3 text-sm text-gray-700">
-                  <Shield className="mt-0.5 h-5 w-5 shrink-0 text-primary-dark" strokeWidth={1.75} />
-                  <p>
-                    {tWatch.transfer_type === 'TRANSFER_INTERNATIONAL' ? (
-                      <>
-                        Pays to the recipient&apos;s <strong>SafaPay Bank account</strong>. Enter beneficiary and bank
-                        details below.
-                      </>
-                    ) : (
-                      <>
-                        Use the recipient&apos;s <strong>16-digit account number</strong>. Fees are shown before you
-                        confirm.
-                      </>
-                    )}
-                  </p>
-                </div>
-
                 <StyledSelect
                   label="From account"
                   error={transferForm.formState.errors.account_id?.message}
                   {...transferForm.register('account_id')}
                 >
                   <option value="">Select account</option>
-                  {accounts.map((a: { id: string; account_number: string; account_type: string; balance: string }) => (
+                  {accounts.map((a: { id: string; account_number: string; iban?: string | null; account_type: string; balance: string }) => (
                     <option key={a.id} value={a.id}>
-                      {a.account_type} · {a.account_number} · {formatDisplayCurrency(a.balance)}
+                      {a.account_type} · {(a.iban || a.account_number).slice(-4)} · {formatDisplayCurrency(a.balance)}
                     </option>
                   ))}
                 </StyledSelect>
@@ -911,14 +902,17 @@ export default function TransferPage() {
                     />
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                        To account <span className="font-normal normal-case text-gray-400">(16 digits)</span>
+                        To account{' '}
+                        <span className="font-normal normal-case text-gray-400">
+                          ({DOMESTIC_ACCOUNT_NUMBER_MIN_LENGTH}–{DOMESTIC_ACCOUNT_NUMBER_MAX_LENGTH} digits)
+                        </span>
                       </label>
                       <input
                         className="input-field font-mono text-sm tracking-wide"
-                      placeholder="e.g. 8230343052496520"
+                      placeholder="Account number"
                       inputMode="numeric"
                       autoComplete="off"
-                      maxLength={20}
+                      maxLength={DOMESTIC_ACCOUNT_NUMBER_MAX_LENGTH}
                         {...transferForm.register('to_account_id')}
                       />
                       {transferForm.formState.errors.to_account_id && (
@@ -1005,6 +999,8 @@ export default function TransferPage() {
                         <div className="mt-4 flex justify-center py-6">
                           <Spinner />
                         </div>
+                      ) : internationalPreviewHint ? (
+                        <p className="mt-3 text-sm leading-relaxed text-gray-600">{internationalPreviewHint}</p>
                       ) : previewError || !preview ? (
                         <p className="mt-3 text-sm text-amber-800">
                           {transferPreviewErrorMessage(previewQueryError) ||
@@ -1035,25 +1031,26 @@ export default function TransferPage() {
                           {reviewNeedsTransferOtp ? (
                             <div className="mt-4 space-y-2 border-t border-gray-200/80 pt-4 text-sm">
                               <p className="text-gray-700">
-                                This transfer requires email verification. We email a code when your details are
-                                complete — enter it below.
+                                This transfer requires email verification. Click Send OTP to receive a 6-digit code
+                                (valid for 5 minutes), then enter it below.
                               </p>
                               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                 <div className="flex min-w-[9.5rem] shrink-0 items-center sm:justify-center">
                                   {sendOtpMutation.isPending ? (
                                     <span className="text-xs font-medium text-gray-500">Sending code…</span>
-                                  ) : otpResendSecondsLeft > 0 ? (
+                                  ) : transferOtpSent && otpValiditySecondsLeft > 0 ? (
                                     <span className="text-xs font-medium tabular-nums text-gray-500">
-                                      Resend in {otpResendSecondsLeft}s
+                                      Code expires in{' '}
+                                      {`${Math.floor(otpValiditySecondsLeft / 60)}:${String(otpValiditySecondsLeft % 60).padStart(2, '0')}`}
                                     </span>
                                   ) : (
                                     <button
                                       type="button"
                                       disabled={previewLoading || !preview}
-                                      onClick={resendTransferOtp}
+                                      onClick={sendTransferOtp}
                                       className="btn-outline px-4 py-2 text-xs font-semibold"
                                     >
-                                      Resend OTP
+                                      {transferOtpSent ? 'Resend OTP' : 'Send OTP'}
                                     </button>
                                   )}
                                 </div>
@@ -1063,6 +1060,7 @@ export default function TransferPage() {
                                   inputMode="numeric"
                                   maxLength={8}
                                   autoComplete="one-time-code"
+                                  disabled={!transferOtpSent}
                                   value={transferOtp}
                                   onChange={(e) => setTransferOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                 />
@@ -1096,7 +1094,7 @@ export default function TransferPage() {
                         !preview ||
                         insufficientFundsStep1 ||
                         insufficientFundsStep2 ||
-                        (reviewNeedsTransferOtp && transferOtp.length !== 6)
+                        (reviewNeedsTransferOtp && (!transferOtpSent || transferOtp.length !== 6))
                       }
                       onClick={() => confirmTransfer()}
                       className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
@@ -1161,9 +1159,9 @@ export default function TransferPage() {
                   <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">Credit to account</label>
                   <select className="input-field text-sm" {...cardForm.register('deposit_account_id')}>
                     <option value="">Select account</option>
-                    {accounts.map((a: { id: string; account_number: string; account_type: string; balance: string }) => (
+                    {accounts.map((a: { id: string; account_number: string; iban?: string | null; account_type: string; balance: string }) => (
                       <option key={a.id} value={a.id}>
-                        {a.account_type} · {a.account_number}
+                        {a.account_type} · ····{(a.iban || a.account_number).slice(-4)}
                       </option>
                     ))}
                   </select>
@@ -1314,7 +1312,7 @@ export default function TransferPage() {
           setComplianceModalOpen(false)
           void queryClient.invalidateQueries({ queryKey: ['transactions'] })
         }}
-        onCompleted={finishTransferSuccess}
+        onCompleted={(tx) => finishTransferSuccess(tx)}
       />
     </div>
   )

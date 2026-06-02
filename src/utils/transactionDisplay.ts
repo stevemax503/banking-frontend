@@ -111,14 +111,35 @@ export function transactionNarrationBrief(tx: TransactionListItem, maxLen = 80):
   return full.length <= maxLen ? full : `${full.slice(0, maxLen - 1)}…`
 }
 
-/** Full narration for deposits (source details) and mirror reversal lines. */
+/** Full customer-visible description (includes reference; memo in parentheses). */
 export function transactionNarration(tx: TransactionListItem): string {
-  const meta = tx.metadata
-  const narr = meta?.deposit_narration
-  if (typeof narr === 'string' && narr.trim()) return narr.trim()
   const raw = (tx.description || '').trim()
   if (raw) return raw
+  const meta = tx.metadata
+  const system = meta?.system_narration
+  if (typeof system === 'string' && system.trim()) {
+    const ref = (tx.reference_number || '').trim()
+    return ref && !system.includes(ref) ? `${system}${ref}` : system.trim()
+  }
+  const narr = meta?.deposit_narration
+  if (typeof narr === 'string' && narr.trim()) return narr.trim()
   return merchantLabel(tx)
+}
+
+/** Outgoing transfers/withdrawals only — not deposits, fees, or credits. */
+export function canExportTransactionReceipt(tx: TransactionListItem, isCredit: boolean): boolean {
+  if (isCredit) return false
+  const t = tx.transaction_type
+  if (t === 'FEE' || t === 'DEPOSIT' || t === 'INTEREST' || t === 'LOAN_DISBURSEMENT' || t === 'REVERSAL') {
+    return false
+  }
+  return (
+    t === 'WITHDRAWAL' ||
+    t === 'TRANSFER_INTERNAL' ||
+    t === 'TRANSFER_EXTERNAL' ||
+    t === 'TRANSFER_INTERNATIONAL' ||
+    t === 'LOAN_PAYMENT'
+  )
 }
 
 export function isCreditForUser(tx: TransactionListItem, userAccountIds: Set<string>): boolean {

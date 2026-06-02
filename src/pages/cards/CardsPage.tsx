@@ -18,7 +18,8 @@ import RequestReplacementModal from '@/components/cards/RequestReplacementModal'
 import CardWidget from '@/components/ui/CardWidget'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
-import { DISPLAY_CURRENCY_SYMBOL, maskAccountNumber } from '@/utils/format'
+import { DISPLAY_CURRENCY_SYMBOL } from '@/utils/format'
+import { formatAccountIdentifierDisplay, maskAccountIdentifier } from '@/lib/uaeAccount'
 import { formatAccountTypeLabel } from '@/lib/accountDisplay'
 import { cardTierLabel, cardVariantFromTier } from '@/lib/cardTier'
 
@@ -74,6 +75,7 @@ export default function CardsPage() {
     | {
         id: string
         account_number: string
+        iban?: string | null
         account_type: string
         balance: string
         available_balance: string
@@ -186,6 +188,7 @@ export default function CardsPage() {
                     const acc = row.account as {
                       id: string
                       account_number: string
+        iban?: string | null
                       account_type: string
                       balance: string
                     }
@@ -208,7 +211,7 @@ export default function CardsPage() {
                         >
                           <CardWidget
                             variant={v}
-                            accountNumber={acc.account_number}
+                            accountNumber={maskAccountIdentifier(acc)}
                             cardHolder={user?.full_name || 'CARD HOLDER'}
                             accountType={label}
                             balance={acc.balance}
@@ -309,7 +312,7 @@ export default function CardsPage() {
                         <dl className="space-y-2 text-sm">
                           <div className="flex justify-between gap-2 border-b border-gray-50 py-2">
                             <dt className="text-gray-500">Number</dt>
-                            <dd className="font-mono text-gray-900">{maskAccountNumber(selectedAccount.account_number)}</dd>
+                            <dd className="font-mono text-gray-900">{formatAccountIdentifierDisplay(selectedAccount)}</dd>
                           </div>
                           <div className="flex justify-between gap-2 border-b border-gray-50 py-2">
                             <dt className="text-gray-500">Expires</dt>

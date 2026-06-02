@@ -498,8 +498,8 @@ export default function CompleteProfilePage() {
           <div className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-8px_rgba(21,42,30,0.08)]">
             <div className="bg-primary-dark px-6 py-5 sm:px-8">
               <p className="text-sm leading-relaxed text-white/90">
-                Fields marked with <span className="font-semibold text-accent">*</span> are required. Your 16-digit account
-                number and IBAN are issued after you submit.
+                Fields marked with <span className="font-semibold text-accent">*</span> are required. Your account number
+                and IBAN are issued after you submit.
               </p>
             </div>
 

@@ -7,6 +7,7 @@ import { selectShell, StyledSelect } from '@/components/forms/StyledSelect'
 import { cn } from '@/utils/cn'
 import {
   useCityOptions,
+  useCountryComboboxDraft,
   useCountryOptions,
   useLocationDataset,
   useStateOptions,
@@ -59,6 +60,23 @@ export default function InternationalTransferFormSections({
   const stateOptions = useStateOptions(csc, beneficiaryCountry)
   const cityOptions = useCityOptions(csc, beneficiaryCountry, beneficiaryState, stateOptions)
   const bankCityOptions = useCityOptions(csc, bankCountry, '', [])
+  const { draft: beneficiaryCountryDraft, onChange: onBeneficiaryCountryChange } = useCountryComboboxDraft(
+    beneficiaryCountry,
+    csc,
+    (iso) => {
+      setValue('beneficiary_country', iso, { shouldValidate: true })
+      setValue('beneficiary_region_state', '')
+      setValue('beneficiary_city', '')
+    },
+  )
+  const { draft: bankCountryDraft, onChange: onBankCountryChange } = useCountryComboboxDraft(
+    bankCountry,
+    csc,
+    (iso) => {
+      setValue('beneficiary_bank_country', iso, { shouldValidate: true })
+      setValue('beneficiary_bank_city', '')
+    },
+  )
   const acctType = w('account_number_type')
   const sendCurrency = w('transfer_currency')
   const amount = w('amount')
@@ -184,18 +202,13 @@ export default function InternationalTransferFormSections({
               </div>
               <LocationCombobox
                 label="Country"
-                value={beneficiaryCountry}
-                onChange={(v) => {
-                  setValue('beneficiary_country', v.toUpperCase(), { shouldValidate: true })
-                  setValue('beneficiary_region_state', '')
-                  setValue('beneficiary_city', '')
-                }}
+                value={beneficiaryCountryDraft}
+                onChange={onBeneficiaryCountryChange}
                 options={countryOptions}
                 loading={locationLoading}
-                placeholder="Search or type ISO-2 (e.g. GB)"
-                hint="Pick a country or type an ISO-2 code manually"
+                placeholder="Search country"
+                hint="Select a country from the list"
                 error={errors.beneficiary_country?.message}
-                inputClassName="uppercase"
               />
               <LocationCombobox
                 label="Region / state (optional)"
@@ -324,17 +337,13 @@ export default function InternationalTransferFormSections({
           )}
           <LocationCombobox
             label="Bank country"
-            value={bankCountry}
-            onChange={(v) => {
-              setValue('beneficiary_bank_country', v.toUpperCase(), { shouldValidate: true })
-              setValue('beneficiary_bank_city', '')
-            }}
+            value={bankCountryDraft}
+            onChange={onBankCountryChange}
             options={countryOptions}
             loading={locationLoading}
-            placeholder="Search or type ISO-2"
-            hint="Pick from list or type ISO-2 manually"
+            placeholder="Search country"
+            hint="Select a country from the list"
             error={errors.beneficiary_bank_country?.message}
-            inputClassName="font-mono uppercase"
           />
           <LocationCombobox
             label="Bank city"
@@ -354,7 +363,7 @@ export default function InternationalTransferFormSections({
       <div className="space-y-3">
         <SectionTitle>Payment reference</SectionTitle>
         <Input
-          label="Remittance / invoice reference"
+          label="Remittance / invoice reference (optional)"
           placeholder="e.g. INV-2026-001 (max 35 characters)"
           error={errors.remittance_reference?.message}
           {...register('remittance_reference')}

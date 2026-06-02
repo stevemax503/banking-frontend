@@ -24,6 +24,7 @@ import { accountsApi } from '@/api/accounts'
 import { statementsApi } from '@/api/statements'
 import { useAuthStore } from '@/store/authStore'
 import { formatAccountTypeLabel } from '@/lib/accountDisplay'
+import { copyableAccountIdentifier, formatAccountIdentifierDisplay } from '@/lib/uaeAccount'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDisplayAmount, formatDisplayCurrency } from '@/utils/format'
@@ -267,6 +268,7 @@ export default function TransactionListPage() {
       id: string
       account_type: string
       account_number: string
+      iban?: string | null
       balance: string
       status: string
       is_primary?: boolean
@@ -661,7 +663,9 @@ export default function TransactionListPage() {
                       <p className="mt-1 text-xs text-gray-600 leading-snug sm:text-sm">
                         {formatAccountTypeLabel(primaryAccount.account_type).toUpperCase()} (
                         {primaryAccount.account_type}){' '}
-                        <span className="font-semibold text-gray-900">{primaryAccount.account_number}</span>
+                        <span className="font-semibold text-gray-900 font-mono text-[11px] sm:text-xs">
+                          {formatAccountIdentifierDisplay(primaryAccount)}
+                        </span>
                       </p>
                       <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
                         Account Status:{' '}
@@ -682,11 +686,11 @@ export default function TransactionListPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          void navigator.clipboard.writeText(primaryAccount.account_number)
-                          toast.success('Account number copied')
+                          void navigator.clipboard.writeText(copyableAccountIdentifier(primaryAccount))
+                          toast.success('IBAN copied')
                         }}
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm hover:bg-gray-50"
-                        aria-label="Copy account number"
+                        aria-label="Copy IBAN"
                       >
                         <Share2 size={16} />
                       </button>
@@ -1026,9 +1030,12 @@ export default function TransactionListPage() {
           void queryClient.invalidateQueries({ queryKey: ['transactions'] })
           void queryClient.invalidateQueries({ queryKey: ['accounts'] })
         }}
-        onCompleted={() => {
+        onCompleted={(tx) => {
           setComplianceModalOpen(false)
           setResumeSessionId(null)
+          if (tx) {
+            navigate('/transactions/transfer', { state: { completedTransaction: tx } })
+          }
         }}
       />
     </div>

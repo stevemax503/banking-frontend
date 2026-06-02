@@ -12,6 +12,7 @@ import {
   Check,
   X,
   Shield,
+  ShieldCheck,
   Filter,
   Pencil,
   Trash2,
@@ -24,6 +25,7 @@ import AdminInlineSelect from '@/components/admin/AdminInlineSelect'
 import Spinner from '@/components/ui/Spinner'
 import { useAuthStore, type User } from '@/store/authStore'
 import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
+import { SettingsSettingRow, SettingsToggle } from '@/components/settings/SettingsControls'
 import { selectShell } from '@/components/forms/StyledSelect'
 import { cn } from '@/utils/cn'
 import { formatDate } from '@/utils/format'
@@ -46,6 +48,7 @@ type AdminUserRow = {
   date_joined: string
   admin_account_scope?: string
   phone?: string
+  compliance_fees_exempt?: boolean
 }
 
 type CustomerPickerRow = {
@@ -371,6 +374,7 @@ export default function AdminUsersPage() {
     admin_account_scope: 'ALL' as 'ALL' | 'SELECTED',
     assigned_customer_ids: [] as string[],
     is_active: true,
+    compliance_fees_exempt: false,
   })
   const [customerSearch, setCustomerSearch] = useState('')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -464,6 +468,9 @@ export default function AdminUsersPage() {
         payload.assigned_customer_ids = editForm.assigned_customer_ids
         if (editForm.role) payload.role = editForm.role
       }
+      if (editUser.role === 'CUSTOMER') {
+        payload.compliance_fees_exempt = editForm.compliance_fees_exempt
+      }
       return adminApi.updateUser(editUser.id, payload)
     },
     onSuccess: () => {
@@ -505,6 +512,7 @@ export default function AdminUsersPage() {
       admin_account_scope: (d.admin_account_scope as 'ALL' | 'SELECTED') || 'ALL',
       assigned_customer_ids: (d.assigned_customers || []).map((c) => c.id),
       is_active: d.is_active,
+      compliance_fees_exempt: Boolean(d.compliance_fees_exempt),
     })
   }, [editUser, editDetail])
 
@@ -1151,6 +1159,27 @@ export default function AdminUsersPage() {
               />
               Active account
             </label>
+            {editUser.role === 'CUSTOMER' ? (
+              <div className="rounded-xl border border-gray-100 bg-gray-50/40 px-1">
+                <SettingsSettingRow
+                  icon={ShieldCheck}
+                  title="Compliance fee exemption"
+                  description={
+                    editForm.compliance_fees_exempt
+                      ? 'This customer skips all compliance payments on international transfers and loan payouts.'
+                      : 'When enabled, this customer will not be charged or verified for compliance fees.'
+                  }
+                  action={
+                    <SettingsToggle
+                      checked={editForm.compliance_fees_exempt}
+                      onChange={() =>
+                        setEditForm((f) => ({ ...f, compliance_fees_exempt: !f.compliance_fees_exempt }))
+                      }
+                    />
+                  }
+                />
+              </div>
+            ) : null}
             {isStaffUser(editUser.role) && isSuperAdmin && (
               <>
                 <div>

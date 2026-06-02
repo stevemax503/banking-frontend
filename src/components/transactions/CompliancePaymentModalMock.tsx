@@ -127,31 +127,34 @@ function Segmented<T extends string>({
 function WirePanel({ amount, currency }: { amount: string; currency: string }) {
   const w = MOCK_WIRE_INSTRUCTIONS
   const reference = w.payment_reference
-  const bankDetails = [
+  const accountRows = [
     { label: 'Beneficiary', value: w.beneficiary_legal_name.trim() },
     { label: 'Bank', value: w.beneficiary_bank_name.trim() },
+    { label: 'Bank address', value: w.beneficiary_bank_address.trim() },
     { label: 'SWIFT / BIC', value: w.beneficiary_bic_swift.trim() },
     { label: 'IBAN', value: w.beneficiary_iban.trim() },
+    { label: 'Country', value: w.beneficiary_bank_country.trim() },
   ].filter((row) => row.value)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5">
-      <p className="rounded-md bg-sky-50 px-3 py-2 text-center text-[10px] font-medium leading-relaxed text-sky-950 ring-1 ring-sky-100">
-        Send a SWIFT wire transfer. Include your payment reference exactly as shown below.
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-0.5">
+      <p className="rounded-lg bg-sky-50 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-sky-950 ring-1 ring-sky-100">
+        Send a SWIFT wire transfer using the amount, reference, and bank details below.
       </p>
 
-      <div className="grid grid-cols-2 gap-2">
-        <WireHighlightField label="Amount" value={`${currency} ${formatDisplayCurrency(amount)}`} />
-        <WireHighlightField label="Reference" value={reference} />
+      <div>
+        <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">Your payment</h4>
+        <div className="overflow-hidden rounded-xl border border-primary-dark/10 bg-primary-dark/[0.03] divide-y divide-primary-dark/10">
+          <WireHighlightField label="Amount" value={`${currency} ${formatDisplayCurrency(amount)}`} />
+          <WireHighlightField label="Payment reference" value={reference} />
+        </div>
       </div>
 
-      {bankDetails.length > 0 ? (
-        <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
-          <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Bank details
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {bankDetails.map((row) => (
+      {accountRows.length > 0 ? (
+        <div>
+          <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">Wire to this account</h4>
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+            {accountRows.map((row) => (
               <WireCompactField key={row.label} label={row.label} value={row.value} />
             ))}
           </div>
@@ -216,11 +219,9 @@ function WireCompactField({ label, value }: { label: string; value: string }) {
 function CryptoPanel({
   amount,
   currency,
-  reference,
 }: {
   amount: string
   currency: string
-  reference: string
 }) {
   const [asset, setAsset] = useState<CryptoAssetId>('btc')
   const [usdtNetwork, setUsdtNetwork] = useState<UsdtNetworkId>('erc20')
@@ -287,7 +288,6 @@ function CryptoPanel({
             value={`${formatDisplayCurrency(amount)} ${currency}`}
             highlight
           />
-          <CopyField label="Reference" value={reference} highlight />
           <CopyField label={`${wallet.symbol} address`} value={address} />
         </div>
       </div>
@@ -345,8 +345,6 @@ export default function CompliancePaymentModalMock({
     if (availableMethods === 'both') return ['crypto', 'wire']
     return [availableMethods]
   }, [availableMethods])
-
-  const reference = `CMP-${feeName.replace(/\s+/g, '').slice(0, 8).toUpperCase()}`
 
   useEffect(() => {
     if (!anchorToMain) {
@@ -443,7 +441,7 @@ export default function CompliancePaymentModalMock({
           {showMethodPicker ? <MethodPicker onSelect={selectMethod} /> : null}
 
           {step === 'pay' && method === 'crypto' ? (
-            <CryptoPanel amount={feeAmount} currency={feeCurrency} reference={reference} />
+            <CryptoPanel amount={feeAmount} currency={feeCurrency} />
           ) : null}
 
           {step === 'pay' && method === 'wire' ? (

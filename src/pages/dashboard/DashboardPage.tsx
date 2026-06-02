@@ -19,6 +19,7 @@ import TransactionDetailDrawer from '@/components/transactions/TransactionDetail
 import { useIsLgUp } from '@/hooks/useMediaQuery'
 import { fromApiListResponse } from '@/lib/apiList'
 import { type TransactionListItem, isCreditForUser } from '@/utils/transactionDisplay'
+import { accountIdentifierLastFour, formatAccountIdentifierDisplay, maskAccountIdentifier } from '@/lib/uaeAccount'
 
 const BALANCE_VISIBLE_KEY = 'banking-dashboard-balance-visible'
 const SELECTED_ACCOUNT_KEY = 'banking-dashboard-selected-account'
@@ -36,13 +37,6 @@ type DashboardAccount = {
   balance: string
   is_primary?: boolean
   currency?: { symbol?: string }
-}
-
-/** UAE domestic account number — groups of 4 for readability. */
-function formatDomesticAccountDisplay(accountNumber: string | undefined | null): string {
-  if (!accountNumber) return '—'
-  const digits = accountNumber.replace(/\D/g, '')
-  return digits.replace(/(.{4})/g, '$1 ').trim() || '—'
 }
 
 type ActivityTx = {
@@ -228,7 +222,7 @@ export default function DashboardPage() {
           {formatAccountTypeLabel(activeAccount.account_type)}
         </p>
         <p className="font-mono text-base font-semibold text-white tracking-[0.12em] leading-snug sm:text-lg">
-          {formatDomesticAccountDisplay(activeAccount.account_number)}
+          {formatAccountIdentifierDisplay(activeAccount)}
         </p>
       </div>
     ) : null
@@ -247,7 +241,7 @@ export default function DashboardPage() {
           >
             {accounts.map((a) => (
               <option key={a.id} value={a.id} className="text-gray-900">
-                {formatAccountTypeLabel(a.account_type)} · ••••{(a.account_number || '').slice(-4)}
+                {formatAccountTypeLabel(a.account_type)} · ••••{accountIdentifierLastFour(a)}
                 {a.is_primary ? ' (default)' : ''}
               </option>
             ))}
@@ -440,7 +434,7 @@ export default function DashboardPage() {
                 <div className="flex w-full shrink-0 justify-center">
                   <CardWidget
                     compact
-                    accountNumber={activeAccount.account_number || ''}
+                    accountNumber={maskAccountIdentifier(activeAccount)}
                     cardHolder={user?.full_name || 'ACCOUNT HOLDER'}
                     accountType={formatAccountTypeLabel(activeAccount.account_type)}
                     balance={activeAccount.balance}

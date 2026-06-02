@@ -1,7 +1,8 @@
+import { useCallback, useMemo, useRef } from 'react'
 import {
   Dialog, DialogBackdrop, DialogPanel, DialogTitle,
 } from '@headlessui/react'
-import { X, Download, Flag, Shield } from 'lucide-react'
+import { X, Download, Flag, Shield, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '@/utils/cn'
 import { formatDate, formatDisplayAmount } from '@/utils/format'
@@ -13,8 +14,20 @@ import {
   statusBadgeClass,
   formatTransactionStatusLabel,
   canResumeCompliance,
+  canExportTransactionReceipt,
   transactionSettlesBalance,
 } from '@/utils/transactionDisplay'
+import {
+  buildReceiptSnapshot,
+  downloadReceiptFromCanvas,
+  receiptFilename,
+  renderReceiptCanvas,
+  shareReceiptFromCanvas,
+  type ReceiptFormat,
+} from '@/lib/transactionReceiptExport'
+import { useAuthStore } from '@/store/authStore'
+import TransactionReceiptDocument from '@/components/transactions/TransactionReceiptDocument'
+import ReceiptFormatMenu from '@/components/transactions/ReceiptFormatMenu'
 
 interface Props {
   transaction: TransactionListItem | null
@@ -29,19 +42,77 @@ export default function TransactionDetailDrawer({
   onClose,
   onContinueCompliance,
 }: Props) {
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const user = useAuthStore((s) => s.user)
   const cat = tx ? inferCategory(tx) : 'other'
   const categoryMeta = getCategoryMeta(cat)
   const CategoryIcon = categoryMeta.Icon
   const merchant = tx ? transactionNarration(tx) : ''
   const settles = tx ? transactionSettlesBalance(tx.status) : false
 
+  const showReceiptActions = tx ? canExportTransactionReceipt(tx, isCredit) : false
+
+  const receiptSnapshot = useMemo(() => {
+    if (!tx || !showReceiptActions) return null
+    const senderName = (user?.full_name || user?.email || 'Account holder').trim()
+    return buildReceiptSnapshot(tx, { senderName })
+  }, [tx, showReceiptActions, user?.full_name, user?.email])
+
+  const captureReceipt = useCallback(async () => {
+    if (!receiptRef.current) {
+      throw new Error('Receipt template not ready.')
+    }
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    })
+    return renderReceiptCanvas(receiptRef.current)
+  }, [])
+
+  const exportReceipt = useCallback(
+    async (format: ReceiptFormat, mode: 'download' | 'share') => {
+      if (!tx || !receiptSnapshot) return
+      try {
+        const canvas = await captureReceipt()
+        const filename = receiptFilename(receiptSnapshot.reference, format)
+        const title = `Transaction ${receiptSnapshot.reference}`
+
+        if (mode === 'download') {
+          await downloadReceiptFromCanvas(canvas, format, filename)
+          toast.success(format === 'pdf' ? 'Receipt PDF downloaded.' : 'Receipt image downloaded.')
+          return
+        }
+
+        const result = await shareReceiptFromCanvas(canvas, format, filename, title)
+        if (result === 'shared') {
+          toast.success('Receipt shared.')
+        } else {
+          toast.success(
+            format === 'pdf'
+              ? 'Sharing unavailable — PDF downloaded instead.'
+              : 'Sharing unavailable — image downloaded instead.',
+          )
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Could not export receipt.'
+        toast.error(message)
+      }
+    },
+    [tx, receiptSnapshot, captureReceipt],
+  )
+
   return (
     <Dialog open={Boolean(tx)} onClose={onClose} className="relative z-50">
       <DialogBackdrop className="fixed inset-0 bg-black/40" />
       <div className="fixed inset-0 flex justify-end pointer-events-none">
         <DialogPanel className="pointer-events-auto h-full w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-gray-100">
-          {tx && (
+          {tx ? (
             <>
+              {receiptSnapshot ? (
+                <div className="fixed -left-[10000px] top-0 pointer-events-none" aria-hidden>
+                  <TransactionReceiptDocument ref={receiptRef} snapshot={receiptSnapshot} />
+                </div>
+              ) : null}
+
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <DialogTitle className="text-lg font-semibold text-gray-900">Transaction details</DialogTitle>
                 <button
@@ -143,17 +214,22 @@ export default function TransactionDetailDrawer({
                     Continue compliance
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className={cn(
-                    'w-full text-sm py-2.5 flex items-center justify-center gap-2',
-                    canResumeCompliance(tx) && onContinueCompliance ? 'btn-outline' : 'btn-primary',
-                  )}
-                  onClick={() => toast.success('Receipt download started (demo).')}
-                >
-                  <Download size={16} />
-                  Download receipt
-                </button>
+                {showReceiptActions ? (
+                  <>
+                    <ReceiptFormatMenu
+                      label="Download receipt"
+                      icon={<Download size={16} aria-hidden />}
+                      variant={canResumeCompliance(tx) && onContinueCompliance ? 'outline' : 'primary'}
+                      onPick={(format) => exportReceipt(format, 'download')}
+                    />
+                    <ReceiptFormatMenu
+                      label="Share receipt"
+                      icon={<Share2 size={16} aria-hidden />}
+                      variant="outline"
+                      onPick={(format) => exportReceipt(format, 'share')}
+                    />
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className="btn-outline w-full text-sm py-2.5 flex items-center justify-center gap-2"
@@ -164,7 +240,7 @@ export default function TransactionDetailDrawer({
                 </button>
               </div>
             </>
-          )}
+          ) : null}
         </DialogPanel>
       </div>
     </Dialog>

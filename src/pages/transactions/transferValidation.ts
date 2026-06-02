@@ -1,13 +1,10 @@
-/** Domestic (internal/external) recipient account numbers are exactly 16 digits (SafaPay Bank format). */
-export const DESTINATION_ACCOUNT_NUMBER_LENGTH = 16
-
-export function normalizeDestinationAccountNumber(raw: string): string {
-  return raw.replace(/\D/g, '')
-}
-
-export function isValidDestinationAccountNumber(raw: string): boolean {
-  return normalizeDestinationAccountNumber(raw).length === DESTINATION_ACCOUNT_NUMBER_LENGTH
-}
+export {
+  DOMESTIC_ACCOUNT_NUMBER_MIN_LENGTH,
+  DOMESTIC_ACCOUNT_NUMBER_MAX_LENGTH,
+  DOMESTIC_ACCOUNT_NUMBER_LENGTH,
+  isValidDestinationAccountNumber,
+  normalizeDestinationAccountNumber,
+} from '@/lib/uaeAccount'
 
 export function parseMoneyAmount(raw: string | undefined | null): number | null {
   if (raw == null || !String(raw).trim()) return null

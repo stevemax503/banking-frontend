@@ -20,7 +20,7 @@ export type InternationalWirePayload = {
   beneficiary_bic_swift: string
   beneficiary_iban: string
   purpose_of_payment: string
-  remittance_reference: string
+  remittance_reference?: string
   charges_option: 'SHA' | 'BEN' | 'OUR'
   intermediary_bank_bic?: string
   intermediary_bank_name?: string

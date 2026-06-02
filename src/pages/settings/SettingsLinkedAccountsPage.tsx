@@ -7,6 +7,7 @@ import PageShell from '@/components/layout/PageShell'
 import Spinner from '@/components/ui/Spinner'
 import { useAuthStore } from '@/store/authStore'
 import { DISPLAY_CURRENCY_SYMBOL, formatDisplayCurrency } from '@/utils/format'
+import { accountIdentifierLastFour, maskAccountIdentifier } from '@/lib/uaeAccount'
 import { SettingsToggle } from '@/components/settings/SettingsControls'
 
 export default function SettingsLinkedAccountsPage() {
@@ -92,7 +93,7 @@ export default function SettingsLinkedAccountsPage() {
                 <div className="mx-auto max-w-md">
                   <div className="rounded-2xl p-1 ring-1 ring-gray-200/80 ring-offset-2 ring-offset-gray-50/50">
                     <CardWidget
-                      accountNumber={primary.account_number}
+                      accountNumber={maskAccountIdentifier(primary)}
                       cardHolder={user?.full_name || 'ACCOUNT HOLDER'}
                       accountType={primary.account_type}
                       balance={primary.balance}
@@ -117,7 +118,7 @@ export default function SettingsLinkedAccountsPage() {
               <p className="mt-0.5 text-xs text-gray-500">Tap a row for transactions and details</p>
             </div>
             <ul className="divide-y divide-gray-100">
-              {accounts.map((a: { id: string; account_type: string; account_number: string; balance: string }) => (
+              {accounts.map((a: { id: string; account_type: string; account_number: string; iban?: string | null; balance: string }) => (
                 <li key={a.id}>
                   <button
                     type="button"
@@ -129,7 +130,7 @@ export default function SettingsLinkedAccountsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900">{a.account_type}</p>
-                      <p className="font-mono text-xs text-gray-500">····{a.account_number.slice(-4)}</p>
+                      <p className="font-mono text-xs text-gray-500">····{accountIdentifierLastFour(a)}</p>
                     </div>
                     <p className="text-sm font-semibold tabular-nums text-gray-900">{formatDisplayCurrency(a.balance)}</p>
                     <ChevronRight size={18} className="shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-gray-400" />

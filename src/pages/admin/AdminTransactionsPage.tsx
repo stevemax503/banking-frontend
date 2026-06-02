@@ -23,6 +23,11 @@ import { selectShell } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDate, formatDisplayCurrency } from '@/utils/format'
+import {
+  defaultAdminTransactionDatetimeLocal,
+  isoToLocalDatetimeInput,
+  localDatetimeToIso,
+} from '@/lib/adminTransactionDatetime'
 import { formatTransactionStatusLabel } from '@/utils/transactionDisplay'
 import AdminUserCombobox from '@/components/admin/AdminUserCombobox'
 import DateRangeFilter, { type AppliedDateRange } from '@/components/admin/DateRangeFilter'
@@ -38,6 +43,7 @@ type AdminTx = {
   status: string
   description: string
   created_at: string
+  completed_at?: string | null
   customer_email?: string
   initiated_by_email?: string
   metadata?: Record<string, unknown> | null
@@ -74,6 +80,7 @@ const emptyEditForm = {
   transaction_type: 'DEPOSIT',
   description: '',
   currency: 'USD',
+  transaction_at: defaultAdminTransactionDatetimeLocal(),
 }
 
 function typeLabel(type: string) {
@@ -219,6 +226,7 @@ export default function AdminTransactionsPage() {
         transaction_type: editForm.transaction_type,
         description: editForm.description,
         currency: editForm.currency,
+        transaction_at: localDatetimeToIso(editForm.transaction_at),
       }),
     onSuccess: () => {
       invalidate()
@@ -276,6 +284,7 @@ export default function AdminTransactionsPage() {
       transaction_type: tx.transaction_type,
       description: tx.description || '',
       currency: tx.currency || 'USD',
+      transaction_at: isoToLocalDatetimeInput(tx.created_at),
     })
   }
 
@@ -810,12 +819,25 @@ export default function AdminTransactionsPage() {
                 </div>
 
                 <div className="sm:col-span-2">
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-600">Transaction date &amp; time</label>
+                  <input
+                    type="datetime-local"
+                    className="input-field w-full text-sm"
+                    value={editForm.transaction_at}
+                    onChange={(e) => setEditForm({ ...editForm, transaction_at: e.target.value })}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
                   <label className="mb-1.5 block text-xs font-semibold text-gray-600">Description</label>
                   <input
                     className="input-field w-full text-sm"
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                   />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    Full statement line (includes reference). Edit freely as needed.
+                  </p>
                 </div>
               </div>
             </div>

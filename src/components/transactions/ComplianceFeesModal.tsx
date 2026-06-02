@@ -25,11 +25,14 @@ type RegSession = {
   lines: SessionLine[]
 }
 
+import type { TransactionListItem } from '@/utils/transactionDisplay'
+import { asTransactionListItem } from '@/lib/transactionApiMappers'
+
 type Props = {
   open: boolean
   sessionId: string | null
   onClose: () => void
-  onCompleted?: () => void
+  onCompleted?: (transaction: TransactionListItem | null) => void
   flow?: 'international' | 'loan'
   loanApplicationId?: string
   disbursementAccountId?: string
@@ -172,20 +175,20 @@ export default function ComplianceFeesModal({
       }
       return transactionsApi.regulatedSessionCompleteTransfer(effectiveSessionId!)
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['accounts'] })
       void queryClient.invalidateQueries({ queryKey: ['loan-applications'] })
       void queryClient.invalidateQueries({ queryKey: ['loan-accounts'] })
       toast.success(isLoan ? 'Loan sent to your account.' : 'International transfer completed.')
-      onCompleted?.()
+      onCompleted?.(asTransactionListItem(res.data))
       onClose()
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       if (isLoan && msg === undefined && err instanceof Error && err.message === 'disbursementAccountId required') {
         toast.success('All compliance fees verified.')
-        onCompleted?.()
+        onCompleted?.(null)
         onClose()
         return
       }
@@ -253,7 +256,7 @@ export default function ComplianceFeesModal({
       const lines = sess?.lines ?? regSession?.lines ?? []
       if (lines.length && lines.every((l) => l.status === 'OTP_VERIFIED')) {
         if (isLoan && !disbursementAccountId) {
-          onCompleted?.()
+          onCompleted?.(null)
           onClose()
           return
         }
@@ -457,6 +460,7 @@ export default function ComplianceFeesModal({
           paymentReference={activeLine.payment_reference || ''}
           instructions={paymentInstructions}
           anchorToMain={anchorToMain}
+          resumeFrom={isLoan ? 'loan' : 'transfer'}
         />
       ) : null}
     </>

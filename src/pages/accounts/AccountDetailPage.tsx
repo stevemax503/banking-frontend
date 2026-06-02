@@ -6,6 +6,7 @@ import TransactionRow from '@/components/ui/TransactionRow'
 import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
 import { formatAccountTypeLabel } from '@/lib/accountDisplay'
+import { formatAccountIdentifierDisplay, formatDomesticAccountNumber } from '@/lib/uaeAccount'
 
 export default function AccountDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -45,10 +46,9 @@ export default function AccountDetailPage() {
         </div>
         <p className="text-4xl font-bold mt-1">{formatDisplayCurrency(account.balance)}</p>
         <p className="text-white/50 text-xs mt-1">Available: {formatDisplayCurrency(account.available_balance)}</p>
-        <p className="text-white/40 font-mono text-sm mt-4">Account no. {account.account_number}</p>
-        {account.iban && (
-          <p className="text-white/40 font-mono text-xs mt-1 break-all">IBAN {account.iban}</p>
-        )}
+        <p className="text-white/40 font-mono text-sm mt-4 leading-relaxed">
+          IBAN {account.iban ? formatAccountIdentifierDisplay(account) : formatDomesticAccountNumber(account.account_number)}
+        </p>
       </div>
 
       <div className="card">

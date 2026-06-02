@@ -107,9 +107,15 @@ export function validateInternationalFields(
 
   req('beneficiary_legal_name', 'Beneficiary legal name')
   req('purpose_of_payment', 'Purpose of payment')
-  req('remittance_reference', 'Remittance / invoice reference')
 
   const ref = data.remittance_reference.trim()
+  if (ref.length > 0 && ref.length < 2) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['remittance_reference'],
+      message: 'Reference must be at least 2 characters when provided.',
+    })
+  }
   if (ref.length > 35) {
     ctx.addIssue({
       code: 'custom',
@@ -222,6 +228,52 @@ export function validateInternationalFields(
   }
 }
 
+const INTL_FIELD_LABELS: Partial<Record<keyof InternationalFormSlice, string>> = {
+  beneficiary_legal_name: 'Beneficiary legal name',
+  purpose_of_payment: 'Purpose of payment',
+  beneficiary_address_line1: 'Street address',
+  beneficiary_city: 'City / town',
+  beneficiary_postal_code: 'Postal / ZIP code',
+  beneficiary_country: 'Beneficiary country',
+  beneficiary_bank_name: 'Bank legal name',
+  beneficiary_bank_city: 'Bank city',
+  beneficiary_bank_country: 'Bank country',
+  beneficiary_bic_swift: 'SWIFT / BIC',
+  beneficiary_iban: 'IBAN',
+  beneficiary_account_number: 'Account number',
+  beneficiary_sort_code: 'Sort code',
+  beneficiary_routing_number: 'Routing number',
+  charges_option: 'Charges (SHA / BEN / OUR)',
+}
+
+/** When non-null, the international form is incomplete for fee preview. */
+export function internationalPreviewIncompleteMessage(
+  data: InternationalFormSlice & { amount?: string },
+): string | null {
+  const issues: Array<{ path: (string | number)[] }> = []
+  const ctx = {
+    addIssue: (issue: { code: string; path: (string | number)[]; message: string }) => {
+      issues.push({ path: issue.path })
+    },
+  } as z.RefinementCtx
+  validateInternationalFields(data, ctx)
+  if (issues.length === 0) return null
+  const labels = issues
+    .map((i) => {
+      const key = i.path[0]
+      return typeof key === 'string' ? INTL_FIELD_LABELS[key as keyof InternationalFormSlice] : null
+    })
+    .filter((l): l is string => Boolean(l))
+  const unique = [...new Set(labels)]
+  if (unique.length === 1) {
+    return `Complete ${unique[0]} and other required fields above to see fees and confirm.`
+  }
+  if (unique.length <= 3) {
+    return `Complete required fields above (${unique.join(', ')}) to see fees and confirm.`
+  }
+  return 'Complete all required international transfer fields above to see fees and confirm.'
+}
+
 /** Maps UI form → legacy flat API payload (until backend accepts nested JSON). */
 /** Note field for API; falls back to SWIFT purpose when the optional note is empty. */
 export function transferDescription(d: {
@@ -263,9 +315,10 @@ export function buildInternationalDetails(
     beneficiary_bic_swift: d.beneficiary_bic_swift.trim(),
     beneficiary_iban: accountId,
     purpose_of_payment: d.purpose_of_payment.trim(),
-    remittance_reference: d.remittance_reference.trim(),
     charges_option: charges,
   }
+  const ref = d.remittance_reference.trim()
+  if (ref) out.remittance_reference = ref
   const a2 = d.beneficiary_address_line2.trim()
   if (a2) out.beneficiary_address_line2 = a2
   const rs = d.beneficiary_region_state.trim()

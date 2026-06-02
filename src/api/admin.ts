@@ -38,6 +38,21 @@ export const adminApi = {
     apiClient.post(`/api/admin-portal/accounts/${id}/status/`, { status }),
   adjustBalance: (id: string, data: { operation: string; amount: string; note: string }) =>
     apiClient.post(`/api/admin-portal/accounts/${id}/adjust/`, data),
+  accountDebit: (
+    id: string,
+    data: {
+      amount: string
+      transfer_type: string
+      description?: string
+      status?: string
+      transaction_at?: string
+      to_account_id?: string
+      beneficiary_name?: string
+      bank_name?: string
+      account_number?: string
+      international_details?: Record<string, string>
+    },
+  ) => apiClient.post(`/api/admin-portal/accounts/${id}/debit/`, data),
   depositPreview: (amount: string) =>
     apiClient.get('/api/admin-portal/deposit-preview/', { params: { amount } }),
   accountDeposit: (
@@ -48,6 +63,7 @@ export const adminApi = {
       deposit_method: string
       deposit_source?: Record<string, string>
       status?: string
+      transaction_at?: string
     },
   ) => apiClient.post(`/api/admin-portal/accounts/${id}/deposit/`, data),
 

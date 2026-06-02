@@ -19,12 +19,17 @@ import { selectShell } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDisplayCurrency } from '@/utils/format'
+import { accountIdentifierLastFour, formatAccountIdentifierDisplay } from '@/lib/uaeAccount'
 import {
   DEPOSIT_SOURCE_FIELDS,
   depositSourceComplete,
   emptyDepositSource,
   type DepositMethodKey,
 } from '@/lib/depositSourceFields'
+import {
+  defaultAdminTransactionDatetimeLocal,
+  localDatetimeToIso,
+} from '@/lib/adminTransactionDatetime'
 
 const DEPOSIT_METHODS = [
   { value: 'TRANSFER', label: 'Bank transfer' },
@@ -46,11 +51,25 @@ const DEPOSIT_STATUSES = [
 type AccountRow = {
   id: string
   account_number: string
+  iban?: string | null
   owner_name: string
   account_type: string
   balance: string
   status: string
 }
+
+const DEBIT_TRANSFER_TYPES = [
+  { value: 'TRANSFER_INTERNAL', label: 'Internal (SafaPay account)' },
+  { value: 'TRANSFER_EXTERNAL', label: 'External (domestic bank)' },
+  { value: 'TRANSFER_INTERNATIONAL', label: 'International' },
+] as const
+
+const DEBIT_STATUSES = [
+  { value: 'COMPLETED', label: 'Successful' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'FAILED', label: 'Failed' },
+  { value: 'FLAGGED', label: 'Flagged' },
+] as const
 
 const emptyDepositForm = () => ({
   amount: '',
@@ -58,6 +77,19 @@ const emptyDepositForm = () => ({
   deposit_method: 'TRANSFER' as DepositMethodKey,
   deposit_source: emptyDepositSource('TRANSFER'),
   status: 'COMPLETED',
+  transaction_at: defaultAdminTransactionDatetimeLocal(),
+})
+
+const emptyDebitForm = () => ({
+  amount: '',
+  description: '',
+  transfer_type: 'TRANSFER_EXTERNAL' as (typeof DEBIT_TRANSFER_TYPES)[number]['value'],
+  beneficiary_name: '',
+  bank_name: '',
+  account_number: '',
+  to_account_id: '',
+  status: 'COMPLETED',
+  transaction_at: defaultAdminTransactionDatetimeLocal(),
 })
 
 function accountTypeBadge(type: string) {
@@ -100,7 +132,7 @@ function FieldLabel({ children, required }: { children: ReactNode; required?: bo
 function AccountSummary({ account }: { account: AccountRow }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50/90 px-3 py-2.5">
-      <p className="font-mono text-[11px] text-gray-600">{account.account_number}</p>
+      <p className="font-mono text-[11px] text-gray-600">{formatAccountIdentifierDisplay(account)}</p>
       <p className="mt-0.5 text-sm font-semibold text-gray-900">{account.owner_name}</p>
       <p className="mt-1 text-xs text-gray-500">
         Balance{' '}
@@ -187,8 +219,8 @@ export default function AdminAccountsPage() {
 
   const [depositTarget, setDepositTarget] = useState<AccountRow | null>(null)
   const [depositForm, setDepositForm] = useState(emptyDepositForm())
-  const [adjustAccount, setAdjustAccount] = useState<AccountRow | null>(null)
-  const [adjustForm, setAdjustForm] = useState({ operation: 'debit', amount: '', note: '' })
+  const [debitAccount, setDebitAccount] = useState<AccountRow | null>(null)
+  const [debitForm, setDebitForm] = useState(emptyDebitForm)
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -213,26 +245,53 @@ export default function AdminAccountsPage() {
   const sourceFields = DEPOSIT_SOURCE_FIELDS[depositMethod] ?? []
   const sourceReady = depositSourceComplete(depositMethod, depositForm.deposit_source)
 
-  const adjustMutation = useMutation({
-    mutationFn: () => adminApi.adjustBalance(adjustAccount!.id, adjustForm),
-    onSuccess: () => {
+  const debitMutation = useMutation({
+    mutationFn: () => {
+      const at = localDatetimeToIso(debitForm.transaction_at)
+      return adminApi.accountDebit(debitAccount!.id, {
+        amount: debitForm.amount,
+        transfer_type: debitForm.transfer_type,
+        description: debitForm.description,
+        status: debitForm.status,
+        transaction_at: at,
+        beneficiary_name: debitForm.beneficiary_name,
+        bank_name: debitForm.bank_name,
+        account_number: debitForm.account_number || debitForm.to_account_id,
+        to_account_id: debitForm.to_account_id || debitForm.account_number,
+        international_details:
+          debitForm.transfer_type === 'TRANSFER_INTERNATIONAL'
+            ? {
+                beneficiary_legal_name: debitForm.beneficiary_name,
+                beneficiary_bank_name: debitForm.bank_name,
+                beneficiary_iban: debitForm.account_number,
+              }
+            : undefined,
+      })
+    },
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['admin-accounts'] })
-      setAdjustAccount(null)
-      toast.success('Balance adjusted.')
+      queryClient.invalidateQueries({ queryKey: ['admin-transactions'] })
+      setDebitAccount(null)
+      setDebitForm(emptyDebitForm())
+      const ref = res.data?.reference as string | undefined
+      toast.success(ref ? `Debit recorded (${ref}).` : 'Debit recorded.')
     },
     onError: (err: unknown) =>
-      toast.error((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Failed.'),
+      toast.error((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || 'Debit failed.'),
   })
 
   const depositMutation = useMutation({
-    mutationFn: () =>
-      adminApi.accountDeposit(depositTarget!.id, {
+    mutationFn: () => {
+      const at = localDatetimeToIso(depositForm.transaction_at)
+      return adminApi.accountDeposit(depositTarget!.id, {
         amount: depositForm.amount,
-        description: depositForm.description || 'Deposit',
+        description: depositForm.description,
         deposit_method: depositForm.deposit_method,
         deposit_source: depositForm.deposit_source,
         status: depositForm.status,
-      }),
+        transaction_at: at,
+      })
+    },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['admin-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['admin-transactions'] })
@@ -263,7 +322,7 @@ export default function AdminAccountsPage() {
 
   const selectedAccountLabel = useMemo(() => {
     if (!depositTarget) return ''
-    return `${depositTarget.owner_name} · ····${depositTarget.account_number.slice(-4)}`
+    return `${depositTarget.owner_name} · ····${accountIdentifierLastFour(depositTarget)}`
   }, [depositTarget])
 
   const searchField = (
@@ -361,7 +420,9 @@ export default function AdminAccountsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-gray-900">{a.owner_name}</p>
-                        <p className="mt-0.5 break-all font-mono text-[11px] text-gray-500">{a.account_number}</p>
+                        <p className="mt-0.5 break-all font-mono text-[11px] text-gray-500">
+                          {formatAccountIdentifierDisplay(a)}
+                        </p>
                         <div className="mt-2.5 flex flex-wrap gap-1.5">
                           <span
                             className={cn(
@@ -397,8 +458,8 @@ export default function AdminAccountsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setAdjustAccount(a)
-                          setAdjustForm({ operation: 'debit', amount: '', note: '' })
+                          setDebitAccount(a)
+                          setDebitForm(emptyDebitForm())
                         }}
                         className="inline-flex min-h-[2.75rem] items-center justify-center gap-1.5 rounded-xl border border-red-200/90 bg-red-50/80 px-2.5 py-2 text-[11px] font-semibold text-red-700 shadow-sm transition hover:bg-red-100"
                       >
@@ -429,7 +490,9 @@ export default function AdminAccountsPage() {
                       key={a.id}
                       className={cn('transition-colors hover:bg-emerald-50/30', i % 2 === 1 && 'bg-gray-50/40')}
                     >
-                      <td className="px-4 py-3.5 font-mono text-[11px] text-gray-700 sm:px-6">{a.account_number}</td>
+                      <td className="px-4 py-3.5 font-mono text-[11px] text-gray-700 sm:px-6">
+                        {formatAccountIdentifierDisplay(a)}
+                      </td>
                       <td className="px-3 py-3.5 font-medium text-gray-900">{a.owner_name}</td>
                       <td className="px-3 py-3.5">
                         <span
@@ -469,8 +532,8 @@ export default function AdminAccountsPage() {
                             type="button"
                             title="Debit"
                             onClick={() => {
-                              setAdjustAccount(a)
-                              setAdjustForm({ operation: 'debit', amount: '', note: '' })
+                              setDebitAccount(a)
+                              setDebitForm(emptyDebitForm())
                             }}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-red-600 shadow-sm transition hover:border-red-200 hover:bg-red-50"
                           >
@@ -607,10 +670,20 @@ export default function AdminAccountsPage() {
             </div>
 
             <div>
-              <FieldLabel>Description</FieldLabel>
+              <FieldLabel>Deposit date &amp; time</FieldLabel>
+              <input
+                type="datetime-local"
+                className="input-field text-sm"
+                value={depositForm.transaction_at}
+                onChange={(e) => setDepositForm({ ...depositForm, transaction_at: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Customer note</FieldLabel>
               <input
                 className="input-field text-sm"
-                placeholder="Optional — auto-generated if blank"
+                placeholder="Optional — shown in brackets on the statement"
                 value={depositForm.description}
                 onChange={(e) => setDepositForm({ ...depositForm, description: e.target.value })}
               />
@@ -665,41 +738,51 @@ export default function AdminAccountsPage() {
       </AdminModal>
 
       <AdminModal
-        open={!!adjustAccount}
-        onClose={() => setAdjustAccount(null)}
+        open={!!debitAccount}
+        onClose={() => {
+          setDebitAccount(null)
+          setDebitForm(emptyDebitForm())
+        }}
         title="Debit account"
         subtitle={
-          adjustAccount
-            ? `${adjustAccount.owner_name} · ····${adjustAccount.account_number.slice(-4)}`
+          debitAccount
+            ? `${debitAccount.owner_name} · ····${accountIdentifierLastFour(debitAccount)}`
             : undefined
         }
         icon={ArrowUpFromLine}
         iconClassName="bg-red-700 text-white ring-red-700/20"
         footer={
           <>
-            <button type="button" onClick={() => setAdjustAccount(null)} className="btn-outline flex-1 text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setDebitAccount(null)
+                setDebitForm(emptyDebitForm())
+              }}
+              className="btn-outline flex-1 text-sm"
+            >
               Cancel
             </button>
             <button
               type="button"
-              onClick={() => adjustMutation.mutate()}
-              disabled={!adjustForm.amount || !adjustForm.note || adjustMutation.isPending}
+              onClick={() => debitMutation.mutate()}
+              disabled={!debitForm.amount || debitMutation.isPending}
               className="flex-1 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:opacity-50"
             >
-              {adjustMutation.isPending ? 'Processing…' : 'Confirm debit'}
+              {debitMutation.isPending ? 'Processing…' : 'Confirm debit'}
             </button>
           </>
         }
       >
-        {adjustAccount ? (
+        {debitAccount ? (
           <div className="space-y-4">
-            <AccountSummary account={adjustAccount} />
+            <AccountSummary account={debitAccount} />
 
             <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-950">
               <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" aria-hidden />
               <p>
-                Manual debits reduce the customer balance immediately. Use only for corrections or authorized
-                adjustments — not standard withdrawals.
+                Posts as a transfer from this account. Beneficiary fields are optional; the statement line includes
+                the transaction reference automatically.
               </p>
             </div>
 
@@ -711,21 +794,111 @@ export default function AdminAccountsPage() {
                 min="0.01"
                 placeholder="0.00"
                 className="input-field text-sm"
-                value={adjustForm.amount}
-                onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })}
+                value={debitForm.amount}
+                onChange={(e) => setDebitForm({ ...debitForm, amount: e.target.value })}
               />
             </div>
 
             <div>
-              <FieldLabel required>Audit note</FieldLabel>
-              <textarea
-                rows={3}
-                placeholder="Reason for this debit (required for audit trail)"
-                className="input-field min-h-[4.5rem] resize-y text-sm"
-                value={adjustForm.note}
-                onChange={(e) => setAdjustForm({ ...adjustForm, note: e.target.value })}
+              <FieldLabel>Transfer type</FieldLabel>
+              <select
+                className="input-field text-sm"
+                value={debitForm.transfer_type}
+                onChange={(e) =>
+                  setDebitForm({
+                    ...debitForm,
+                    transfer_type: e.target.value as (typeof DEBIT_TRANSFER_TYPES)[number]['value'],
+                  })
+                }
+              >
+                {DEBIT_TRANSFER_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/80 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Beneficiary (optional)</p>
+              {debitForm.transfer_type === 'TRANSFER_INTERNAL' ? (
+                <div>
+                  <FieldLabel>Destination account</FieldLabel>
+                  <input
+                    className="input-field font-mono text-sm"
+                    placeholder="Account number or UUID"
+                    value={debitForm.to_account_id}
+                    onChange={(e) => setDebitForm({ ...debitForm, to_account_id: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <FieldLabel>Account number</FieldLabel>
+                  <input
+                    className="input-field font-mono text-sm"
+                    placeholder="Account number or IBAN (optional)"
+                    value={debitForm.account_number}
+                    onChange={(e) => setDebitForm({ ...debitForm, account_number: e.target.value })}
+                  />
+                </div>
+              )}
+              <div>
+                <FieldLabel>Beneficiary name</FieldLabel>
+                <input
+                  className="input-field text-sm"
+                  placeholder="Name on account"
+                  value={debitForm.beneficiary_name}
+                  onChange={(e) => setDebitForm({ ...debitForm, beneficiary_name: e.target.value })}
+                />
+              </div>
+              {debitForm.transfer_type !== 'TRANSFER_INTERNAL' ? (
+                <div>
+                  <FieldLabel>Bank name</FieldLabel>
+                  <input
+                    className="input-field text-sm"
+                    placeholder="Receiving bank"
+                    value={debitForm.bank_name}
+                    onChange={(e) => setDebitForm({ ...debitForm, bank_name: e.target.value })}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <div>
+              <FieldLabel>Debit date &amp; time</FieldLabel>
+              <input
+                type="datetime-local"
+                className="input-field text-sm"
+                value={debitForm.transaction_at}
+                onChange={(e) => setDebitForm({ ...debitForm, transaction_at: e.target.value })}
               />
             </div>
+
+            <div>
+              <FieldLabel>Customer note</FieldLabel>
+              <input
+                className="input-field text-sm"
+                placeholder="Optional — shown in brackets on the statement"
+                value={debitForm.description}
+                onChange={(e) => setDebitForm({ ...debitForm, description: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Status</FieldLabel>
+              <select
+                className="input-field text-sm"
+                value={debitForm.status}
+                onChange={(e) => setDebitForm({ ...debitForm, status: e.target.value })}
+              >
+                {DEBIT_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
           </div>
         ) : null}
       </AdminModal>

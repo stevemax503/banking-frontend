@@ -23,6 +23,7 @@ import { Input } from '@/components/forms/Input'
 import { StyledSelect } from '@/components/forms/StyledSelect'
 import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
+import { accountIdentifierLastFour } from '@/lib/uaeAccount'
 import { cn } from '@/utils/cn'
 import { BILL_SERVICES, DEFAULT_SERVICE_ID, getBiller, getService } from '@/lib/uaeBillPayCatalog'
 import { fetchUsdToAed, formatAedEquivalent } from '@/lib/fxUsdAed'
@@ -227,9 +228,9 @@ export default function PaymentsPage() {
             <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-6">
               <StyledSelect label="Pay from" error={errors.account_id?.message} {...register('account_id')}>
                 <option value="">Select account</option>
-                {accounts.map((a: { id: string; account_number: string; account_type: string; balance: string }) => (
+                {accounts.map((a: { id: string; account_number: string; iban?: string | null; account_type: string; balance: string }) => (
                   <option key={a.id} value={a.id}>
-                    {a.account_type} · {a.account_number} · {formatDisplayCurrency(a.balance)}
+                    {a.account_type} · ····{accountIdentifierLastFour(a)} · {formatDisplayCurrency(a.balance)}
                   </option>
                 ))}
               </StyledSelect>

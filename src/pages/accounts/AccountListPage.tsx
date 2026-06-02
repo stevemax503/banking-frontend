@@ -16,11 +16,13 @@ import {
   ACCOUNT_TYPE_MARKETING,
   type AccountTypeCode,
 } from '@/lib/accountTypeMarketing'
+import { formatAccountIdentifierDisplay } from '@/lib/uaeAccount'
 
 type AccountRow = {
   id: string
   account_type: string
   account_number: string
+  iban?: string | null
   balance: string
   available_balance: string
   status: string
@@ -201,7 +203,7 @@ export default function AccountListPage() {
                     <p className="mt-1 text-xs text-gray-500">
                       Available {formatDisplayCurrency(a.available_balance)}
                     </p>
-                    <p className="mt-3 font-mono text-[11px] text-gray-400">{a.account_number}</p>
+                    <p className="mt-3 font-mono text-[11px] text-gray-400">{formatAccountIdentifierDisplay(a)}</p>
                   </button>
                   </li>
                 ))}

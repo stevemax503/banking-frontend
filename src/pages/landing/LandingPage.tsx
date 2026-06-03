@@ -3,7 +3,6 @@ import FeaturesSection from '@/components/landing/FeaturesSection'
 import HeroCarousel from '@/components/landing/HeroCarousel'
 import LandingFooter from '@/components/landing/LandingFooter'
 import LandingHeader from '@/components/landing/LandingHeader'
-import InsurancePartnerSection from '@/components/landing/InsurancePartnerSection'
 import LandingLoansSection from '@/components/landing/LandingLoansSection'
 import TestimonialsMarquee from '@/components/landing/TestimonialsMarquee'
 import TrustedByMarquee from '@/components/landing/TrustedByMarquee'
@@ -48,8 +47,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-        <InsurancePartnerSection />
 
         <TestimonialsMarquee />
 

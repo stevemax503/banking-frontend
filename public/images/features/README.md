@@ -15,7 +15,6 @@ All sources below are free for commercial use (Unsplash License or Pexels Licens
 | `security-alerts.jpg` | Security & alerts | https://unsplash.com/photos/a-padlock-on-a-keyboard-4VhgVHJd60k |
 | `insights-dashboard.jpg` | Spending insights | https://www.pexels.com/photo/marketing-man-laptop-capital-7567550/ |
 | `support.jpg` | 24/7 support | https://www.pexels.com/photo/smiling-woman-wearing-a-headset-8192252/ |
-| `alzanta.png` | Alzanta Insurance (partner logo) | Used on landing partner section — add your file here |
 
 ## Alternate options (if you prefer different visuals)
 

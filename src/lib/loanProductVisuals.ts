@@ -139,3 +139,13 @@ export function resolveLoanProductDisplay(product: {
   const heroImage = product.hero_image_url?.trim() || visual.heroImage
   return { heroImage, tagline, fullDescription }
 }
+
+/** Hero image for admin tables and cards: uploaded image first, else bundled default by loan type. */
+export function loanProductHeroImageUrl(product: {
+  loan_type: string
+  hero_image_url?: string | null
+}): string {
+  const uploaded = product.hero_image_url?.trim()
+  if (uploaded) return uploaded
+  return getLoanTypeVisual(product.loan_type).heroImage
+}

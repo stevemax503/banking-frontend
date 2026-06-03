@@ -7,7 +7,7 @@ import { AdminMobileCard } from '@/components/admin/AdminResponsiveList'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDisplayCurrency, formatPercentage } from '@/utils/format'
-import { LOAN_TYPE_DISPLAY_NAMES, type LoanCatalogType } from '@/lib/loanProductVisuals'
+import { LOAN_TYPE_DISPLAY_NAMES, loanProductHeroImageUrl, type LoanCatalogType } from '@/lib/loanProductVisuals'
 
 export type AdminLoanProduct = {
   id: string
@@ -100,7 +100,7 @@ export default function AdminLoanProductsTab() {
 
   useEffect(() => {
     if (!imageFile) {
-      setPreviewUrl(editing?.hero_image_url ?? null)
+      setPreviewUrl(editing ? loanProductHeroImageUrl(editing) : null)
       return
     }
     const url = URL.createObjectURL(imageFile)
@@ -202,13 +202,11 @@ export default function AdminLoanProductsTab() {
                 <div className="h-1 bg-gradient-to-r from-primary-dark via-primary-dark/80 to-accent/80" aria-hidden />
                 <div className="p-4">
                   <div className="flex gap-3">
-                    {p.hero_image_url ? (
-                      <img src={p.hero_image_url} alt="" className="h-16 w-20 shrink-0 rounded-xl object-cover" />
-                    ) : (
-                      <div className="flex h-16 w-20 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-[10px] text-gray-400">
-                        No img
-                      </div>
-                    )}
+                    <img
+                      src={loanProductHeroImageUrl(p)}
+                      alt=""
+                      className="h-16 w-20 shrink-0 rounded-xl object-cover"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className="truncate font-semibold text-gray-900">{p.name}</p>
@@ -283,13 +281,11 @@ export default function AdminLoanProductsTab() {
                   <tr key={p.id} className="border-b border-gray-50 align-middle hover:bg-gray-50/80">
                     <td className="px-4 py-3 pr-3 sm:px-6">
                       <div className="flex items-center gap-3">
-                        {p.hero_image_url ? (
-                          <img src={p.hero_image_url} alt="" className="h-10 w-14 rounded-lg object-cover" />
-                        ) : (
-                          <div className="flex h-10 w-14 items-center justify-center rounded-lg bg-gray-100 text-[10px] text-gray-400">
-                            No img
-                          </div>
-                        )}
+                        <img
+                          src={loanProductHeroImageUrl(p)}
+                          alt=""
+                          className="h-10 w-14 rounded-lg object-cover"
+                        />
                         <span className="font-medium text-gray-900">{p.name}</span>
                       </div>
                     </td>

@@ -88,6 +88,13 @@ export const adminApi = {
   updateLoanProduct: (id: string, data: FormData) =>
     apiClient.patch(`/api/admin-portal/loan-products/${id}/`, data),
   deleteLoanProduct: (id: string) => apiClient.delete(`/api/admin-portal/loan-products/${id}/`),
+  downloadLoanApplicationForm: (userId?: string) =>
+    apiClient.get('/api/admin-portal/loan-application-form/pdf/', {
+      params: userId ? { user_id: userId } : undefined,
+      responseType: 'blob',
+    }),
+  sendLoanApplicationForm: (data: { email?: string; user_id?: string; loan_id?: string }) =>
+    apiClient.post('/api/admin-portal/loan-application-form/send/', data),
 
   // Card products (issuance fee + monthly cap per account type)
   cardProducts: () => apiClient.get('/api/admin-portal/card-products/'),

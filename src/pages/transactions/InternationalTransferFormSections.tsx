@@ -7,7 +7,7 @@ import { selectShell, StyledSelect } from '@/components/forms/StyledSelect'
 import { cn } from '@/utils/cn'
 import {
   useCityOptions,
-  useCountryComboboxDraft,
+  useCountryComboboxFormatter,
   useCountryOptions,
   useLocationDataset,
   useStateOptions,
@@ -57,26 +57,10 @@ export default function InternationalTransferFormSections({
   const beneficiaryState = w('beneficiary_region_state')
   const bankCountry = w('beneficiary_bank_country')
   const countryOptions = useCountryOptions(csc)
+  const formatCountry = useCountryComboboxFormatter(csc)
   const stateOptions = useStateOptions(csc, beneficiaryCountry)
   const cityOptions = useCityOptions(csc, beneficiaryCountry, beneficiaryState, stateOptions)
   const bankCityOptions = useCityOptions(csc, bankCountry, '', [])
-  const { draft: beneficiaryCountryDraft, onChange: onBeneficiaryCountryChange } = useCountryComboboxDraft(
-    beneficiaryCountry,
-    csc,
-    (iso) => {
-      setValue('beneficiary_country', iso, { shouldValidate: true })
-      setValue('beneficiary_region_state', '')
-      setValue('beneficiary_city', '')
-    },
-  )
-  const { draft: bankCountryDraft, onChange: onBankCountryChange } = useCountryComboboxDraft(
-    bankCountry,
-    csc,
-    (iso) => {
-      setValue('beneficiary_bank_country', iso, { shouldValidate: true })
-      setValue('beneficiary_bank_city', '')
-    },
-  )
   const acctType = w('account_number_type')
   const sendCurrency = w('transfer_currency')
   const amount = w('amount')
@@ -202,12 +186,18 @@ export default function InternationalTransferFormSections({
               </div>
               <LocationCombobox
                 label="Country"
-                value={beneficiaryCountryDraft}
-                onChange={onBeneficiaryCountryChange}
+                value={beneficiaryCountry}
+                onChange={(iso) => {
+                  setValue('beneficiary_country', iso, { shouldValidate: true })
+                  setValue('beneficiary_region_state', '')
+                  setValue('beneficiary_city', '')
+                }}
                 options={countryOptions}
                 loading={locationLoading}
+                selectOnly
+                formatCommitted={formatCountry}
                 placeholder="Search country"
-                hint="Select a country from the list"
+                hint="Type to filter the list, then select a country"
                 error={errors.beneficiary_country?.message}
               />
               <LocationCombobox
@@ -337,12 +327,17 @@ export default function InternationalTransferFormSections({
           )}
           <LocationCombobox
             label="Bank country"
-            value={bankCountryDraft}
-            onChange={onBankCountryChange}
+            value={bankCountry}
+            onChange={(iso) => {
+              setValue('beneficiary_bank_country', iso, { shouldValidate: true })
+              setValue('beneficiary_bank_city', '')
+            }}
             options={countryOptions}
             loading={locationLoading}
+            selectOnly
+            formatCommitted={formatCountry}
             placeholder="Search country"
-            hint="Select a country from the list"
+            hint="Type to filter the list, then select a country"
             error={errors.beneficiary_bank_country?.message}
           />
           <LocationCombobox

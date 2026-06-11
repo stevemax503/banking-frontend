@@ -5,6 +5,7 @@ import type { LocationOption } from '@/lib/locationData'
 
 type Props = {
   label: string
+  /** Committed value (e.g. ISO code for country, or free text for city). */
   value: string
   onChange: (value: string) => void
   options: LocationOption[]
@@ -17,6 +18,17 @@ type Props = {
   inputClassName?: string
   /** When picking from the list, store the country name instead of ISO code. */
   preferLabel?: boolean
+  /**
+   * When true, typing only filters the list — value commits on list selection (or clear).
+   * Use for country fields. State/city can stay free-text (false).
+   */
+  selectOnly?: boolean
+  /** How to show the committed value when the field is not being edited. */
+  formatCommitted?: (value: string) => string
+}
+
+function defaultFormatCommitted(value: string): string {
+  return value
 }
 
 export function LocationCombobox({
@@ -32,22 +44,43 @@ export function LocationCombobox({
   className,
   inputClassName,
   preferLabel = false,
+  selectOnly = false,
+  formatCommitted = defaultFormatCommitted,
 }: Props) {
   const safeValue = value ?? ''
   const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const committedDisplay = useMemo(
+    () => formatCommitted(safeValue) || safeValue,
+    [safeValue, formatCommitted],
+  )
+
+  /** User is searching: focused, or draft text no longer matches the committed label. */
+  const isSearching = focused || draft !== committedDisplay
+
+  // Sync draft when the committed value changes externally (e.g. form reset), not while editing.
+  useEffect(() => {
+    if (!focused && !isSearching) {
+      setDraft(committedDisplay)
+    }
+  }, [committedDisplay, focused, isSearching])
+
+  const filterText = (isSearching ? draft : committedDisplay).trim().toLowerCase()
 
   const filtered = useMemo(() => {
-    const q = safeValue.trim().toLowerCase()
-    if (!q) return options.slice(0, 50)
+    if (!filterText) return options.slice(0, 50)
     return options
       .filter(
         (o) =>
-          o.label.toLowerCase().includes(q) ||
-          o.value.toLowerCase().includes(q),
+          o.label.toLowerCase().includes(filterText) ||
+          o.value.toLowerCase().includes(filterText),
       )
       .slice(0, 50)
-  }, [safeValue, options])
+  }, [filterText, options])
 
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
@@ -57,21 +90,66 @@ export function LocationCombobox({
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [])
 
+  const inputValue = isSearching ? draft : committedDisplay
+
+  const handleDraftChange = (next: string) => {
+    setDraft(next)
+    setOpen(true)
+
+    if (!selectOnly) {
+      onChange(next)
+      return
+    }
+
+    if (!next.trim()) {
+      onChange('')
+      return
+    }
+
+    // Clear committed selection while the user edits away from the chosen label.
+    if (next !== committedDisplay && safeValue) {
+      onChange('')
+    }
+  }
+
+  const commitSelection = (opt: LocationOption) => {
+    const next = preferLabel
+      ? opt.label.replace(/\s*\([A-Z]{2}\)\s*$/i, '').trim()
+      : opt.value
+    const display = preferLabel ? next : opt.label
+    onChange(next)
+    setDraft(display)
+    setOpen(false)
+    // Keep focus so the user can backspace immediately after a mistaken pick.
+    window.requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
   return (
     <div ref={rootRef} className={cn('relative space-y-1', className)}>
       {label ? <label className="block text-sm font-medium text-gray-700">{label}</label> : null}
       <div className="relative">
         <input
+          ref={inputRef}
           type="text"
-          value={safeValue}
+          value={inputValue}
           disabled={disabled || loading}
           placeholder={loading ? 'Loading locations…' : placeholder}
           autoComplete="off"
-          onChange={(e) => {
-            onChange(e.target.value)
+          onChange={(e) => handleDraftChange(e.target.value)}
+          onFocus={() => {
+            setFocused(true)
+            setDraft(committedDisplay)
             setOpen(true)
           }}
-          onFocus={() => setOpen(true)}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setFocused(false)
+              setOpen(false)
+              if (selectOnly) {
+                setDraft(committedDisplay)
+              }
+            }, 120)
+          }}
           className={cn(
             'input-field w-full pr-10',
             error && 'border-red-300 focus:border-red-400 focus:ring-red-100',
@@ -82,7 +160,11 @@ export function LocationCombobox({
           type="button"
           tabIndex={-1}
           disabled={disabled || loading}
-          onClick={() => setOpen((o) => !o)}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            inputRef.current?.focus()
+            setOpen((o) => !o)
+          }}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-700 disabled:opacity-40"
           aria-label="Show suggestions"
         >
@@ -100,13 +182,7 @@ export function LocationCombobox({
                 type="button"
                 className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-emerald-50"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  const next = preferLabel
-                    ? opt.label.replace(/\s*\([A-Z]{2}\)\s*$/i, '').trim()
-                    : opt.value
-                  onChange(next)
-                  setOpen(false)
-                }}
+                onClick={() => commitSelection(opt)}
               >
                 {opt.label}
               </button>

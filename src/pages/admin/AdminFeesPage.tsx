@@ -13,7 +13,7 @@ import { adminApiErrorMessage, buildComplianceFeePayload } from '@/lib/adminApiE
 import { fromAdminListResponse } from '@/lib/adminList'
 import { cn } from '@/utils/cn'
 import { LocationCombobox } from '@/components/forms/LocationCombobox'
-import { useCountryComboboxDraft, useCountryOptions, useLocationDataset } from '@/lib/locationData'
+import { useCountryComboboxFormatter, useCountryOptions, useLocationDataset } from '@/lib/locationData'
 import {
   complianceCustomerMessage,
   complianceMessageForSave,
@@ -226,11 +226,7 @@ function ComplianceExternalPaymentSection({ form, setForm }: ComplianceExternalP
   const patch = (fields: Partial<ComplianceFormState>) => setForm((s) => ({ ...s, ...fields }))
   const { data: csc, isLoading: locationLoading } = useLocationDataset()
   const countryOptions = useCountryOptions(csc)
-  const { draft: wireCountryDraft, onChange: handleWireCountryChange } = useCountryComboboxDraft(
-    form.wire_country,
-    csc,
-    (iso) => patch({ wire_country: iso }),
-  )
+  const formatCountry = useCountryComboboxFormatter(csc)
 
   return (
     <div className="space-y-3">
@@ -407,12 +403,14 @@ function ComplianceExternalPaymentSection({ form, setForm }: ComplianceExternalP
                 <div>
                   <LocationCombobox
                     label="Bank country"
-                    value={wireCountryDraft}
-                    onChange={handleWireCountryChange}
+                    value={form.wire_country}
+                    onChange={(iso) => patch({ wire_country: iso })}
                     options={countryOptions}
                     loading={locationLoading}
+                    selectOnly
+                    formatCommitted={formatCountry}
                     placeholder="Search country"
-                    hint="Select a country from the list"
+                    hint="Type to filter the list, then select a country"
                   />
                 </div>
               </div>

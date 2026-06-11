@@ -8,6 +8,7 @@ import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import AdminLoanProductsTab from '@/pages/admin/AdminLoanProductsTab'
+import LoanApplicationFormPanel from '@/components/admin/LoanApplicationFormPanel'
 
 type Tab = 'applications' | 'products'
 
@@ -116,6 +117,8 @@ export default function AdminLoansPage() {
       {tab === 'products' ? (
         <AdminLoanProductsTab />
       ) : (
+        <>
+        <LoanApplicationFormPanel />
         <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
           {isLoading ? (
             <div className="flex justify-center py-14">
@@ -285,6 +288,7 @@ export default function AdminLoansPage() {
             </div>
           ) : null}
         </section>
+        </>
       )}
     </div>
   )

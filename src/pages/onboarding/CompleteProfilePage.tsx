@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -25,8 +25,8 @@ import SafaPayLogo from '@/components/brand/SafaPayLogo'
 import { LocationCombobox } from '@/components/forms/LocationCombobox'
 import {
   countryDisplayName,
-  resolveCountryIso,
   useCityOptions,
+  useCountryComboboxFormatter,
   useCountryOptions,
   useLocationDataset,
   useStateOptions,
@@ -87,8 +87,9 @@ function splitAddress(addr: string | undefined): AddressFields {
   }
 }
 
-function joinAddress(a: AddressFields): string {
-  return [a.street, a.state, a.city, a.zip, a.country].filter(Boolean).join('\n')
+function joinAddress(a: AddressFields, countryLabel?: string): string {
+  const country = countryLabel ?? a.country
+  return [a.street, a.state, a.city, a.zip, country].filter(Boolean).join('\n')
 }
 
 function isHeicFile(file: File): boolean {
@@ -281,18 +282,9 @@ export default function CompleteProfilePage() {
 
   const { data: csc, isLoading: cscLoading } = useLocationDataset()
   const countryOptions = useCountryOptions(csc)
+  const formatCountry = useCountryComboboxFormatter(csc)
   const stateOptions = useStateOptions(csc, addr.country)
   const cityOptions = useCityOptions(csc, addr.country, addr.state, stateOptions)
-
-  const countryFieldDisplay = useMemo(() => {
-    const raw = addr.country ?? ''
-    if (!raw.trim() || !csc) return raw
-    const iso = resolveCountryIso(csc, raw)
-    if (!iso) return raw
-    const name = countryDisplayName(csc, raw)
-    if (raw.toUpperCase() === iso || raw === name) return `${name} (${iso})`
-    return raw
-  }, [addr.country, csc])
 
   useEffect(() => {
     if (!profilePictureFile) {
@@ -336,7 +328,7 @@ export default function CompleteProfilePage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const addressStr = joinAddress(addr)
+      const addressStr = joinAddress(addr, countryDisplayName(csc, addr.country) || addr.country)
       const basePayload: Record<string, string | null> = {
         full_name: fullName.trim(),
         phone: phone.trim(),
@@ -606,8 +598,10 @@ export default function CompleteProfilePage() {
                       options={countryOptions}
                       loading={cscLoading}
                       preferLabel
-                      placeholder="Search or type country"
-                      hint="Pick from the list or type your nationality"
+                      selectOnly
+                      formatCommitted={(v) => v}
+                      placeholder="Search country"
+                      hint="Type to filter the list, then select your nationality"
                       inputClassName="rounded-xl border-gray-200 py-2.5 text-sm shadow-sm"
                     />
                   </div>
@@ -624,14 +618,16 @@ export default function CompleteProfilePage() {
                   <div className="sm:col-span-2">
                     <LocationCombobox
                       label="Country *"
-                      value={countryFieldDisplay}
+                      value={addr.country}
                       onChange={(v) =>
                         setAddr({ street: addr.street, state: '', city: '', zip: addr.zip, country: v })
                       }
                       options={countryOptions}
                       loading={cscLoading}
-                      placeholder="Search or type country"
-                      hint="Select country first to load states and cities"
+                      selectOnly
+                      formatCommitted={formatCountry}
+                      placeholder="Search country"
+                      hint="Type to filter the list, then select your country"
                       inputClassName="rounded-xl border-gray-200 py-2.5 text-sm shadow-sm"
                     />
                   </div>

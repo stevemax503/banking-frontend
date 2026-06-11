@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useCallback, useMemo, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 export type LocationOption = { value: string; label: string }
@@ -31,23 +31,37 @@ export function useCountryOptions(csc: CscModule | undefined): LocationOption[] 
   }, [csc])
 }
 
+/**
+ * Resolve a stored or pasted country string to ISO-2.
+ * Does NOT treat arbitrary 2-letter fragments (e.g. "Ni" while typing Nigeria) as ISO codes.
+ */
 export function resolveCountryIso(csc: CscModule, raw: string): string | null {
   const q = raw.trim()
   if (!q) return null
+
+  const countries = csc.Country.getAllCountries()
   const upper = q.toUpperCase()
-  if (/^[A-Z]{2}$/.test(upper)) return upper
+
   const paren = q.match(/^(.+?)\s*\(([A-Z]{2})\)\s*$/i)
-  if (paren) return paren[2].toUpperCase()
-  const byName = csc.Country.getAllCountries().find(
+  if (paren) {
+    const iso = paren[2].toUpperCase()
+    return countries.some((c) => c.isoCode === iso) ? iso : null
+  }
+
+  if (/^[A-Z]{2}$/i.test(q)) {
+    const iso = upper
+    return countries.some((c) => c.isoCode === iso) ? iso : null
+  }
+
+  const byName = countries.find(
     (c) =>
       c.name.toLowerCase() === q.toLowerCase() ||
-      c.isoCode.toLowerCase() === q.toLowerCase() ||
       `${c.name} (${c.isoCode})`.toLowerCase() === q.toLowerCase(),
   )
   return byName?.isoCode ?? null
 }
 
-/** Human-readable country name for combobox display / nationality field. */
+/** Human-readable country name for display / saved address text. */
 export function countryDisplayName(csc: CscModule | undefined, raw: string): string {
   if (!raw.trim() || !csc) return raw
   const iso = resolveCountryIso(csc, raw)
@@ -56,7 +70,25 @@ export function countryDisplayName(csc: CscModule | undefined, raw: string): str
   return c?.name ?? raw
 }
 
-/** Combobox that stores ISO-2 but displays the full country name. */
+/** Label shown in country combobox after a country is selected (ISO stored). */
+export function countryComboboxLabel(csc: CscModule | undefined, stored: string): string {
+  if (!stored.trim()) return ''
+  if (!csc) return stored
+  const iso = resolveCountryIso(csc, stored)
+  if (!iso) return stored
+  const c = csc.Country.getAllCountries().find((x) => x.isoCode === iso)
+  return c ? `${c.name} (${c.isoCode})` : stored
+}
+
+/** Stable formatter for LocationCombobox `formatCommitted` on country fields. */
+export function useCountryComboboxFormatter(csc: CscModule | undefined) {
+  return useCallback((stored: string) => countryComboboxLabel(csc, stored), [csc])
+}
+
+/**
+ * @deprecated Use LocationCombobox with selectOnly instead.
+ * Kept for gradual migration — no longer auto-commits while typing.
+ */
 export function useCountryComboboxDraft(
   storedIso: string,
   csc: CscModule | undefined,
@@ -65,20 +97,22 @@ export function useCountryComboboxDraft(
   const [draft, setDraft] = useState('')
 
   useEffect(() => {
-    setDraft(countryDisplayName(csc, storedIso) || storedIso || '')
+    setDraft(countryComboboxLabel(csc, storedIso) || storedIso || '')
   }, [storedIso, csc])
 
   const onChange = (raw: string) => {
     setDraft(raw)
     if (!raw.trim()) {
       onStore('')
-      return
     }
-    const iso = csc ? resolveCountryIso(csc, raw) : null
-    if (iso) onStore(iso)
   }
 
-  return { draft, onChange }
+  const onSelect = (iso: string) => {
+    onStore(iso)
+    setDraft(countryComboboxLabel(csc, iso))
+  }
+
+  return { draft, onChange, onSelect }
 }
 
 export function stateDisplayName(

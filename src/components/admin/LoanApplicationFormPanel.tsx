@@ -31,11 +31,8 @@ export default function LoanApplicationFormPanel() {
   })
 
   const sendMutation = useMutation({
-    mutationFn: () =>
-      adminApi.sendLoanApplicationForm({
-        email: emailOverride ? email.trim() : undefined,
-        user_id: emailOverride ? undefined : customerId || undefined,
-      }),
+    mutationFn: (payload: { email?: string; user_id?: string }) =>
+      adminApi.sendLoanApplicationForm(payload),
     onSuccess: (_data, variables) => {
       toast.success('Application form emailed.')
       if (variables.email) setEmail('')
@@ -115,7 +112,12 @@ export default function LoanApplicationFormPanel() {
           <button
             type="button"
             disabled={!canSend || busy}
-            onClick={() => sendMutation.mutate()}
+            onClick={() =>
+              sendMutation.mutate({
+                email: emailOverride ? email.trim() : undefined,
+                user_id: emailOverride ? undefined : customerId || undefined,
+              })
+            }
             className="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-xl bg-primary-dark px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary disabled:opacity-50"
           >
             <Mail size={16} aria-hidden />

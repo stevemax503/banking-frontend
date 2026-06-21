@@ -57,10 +57,6 @@ export default function LoanApplicationFormPanel() {
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900">Project loan application form</h2>
-              <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-gray-500">
-                7-page SafaPay PDF (cover, application details, loan request, financials, bank details,
-                declaration, and official-use checklist). Send to a customer or any email address.
-              </p>
             </div>
           </div>
         </div>

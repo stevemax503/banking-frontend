@@ -67,6 +67,8 @@ export default function AdminLoansPage() {
 
   return (
     <div className="admin-page space-y-6 pb-8">
+      {tab === 'applications' ? <LoanApplicationFormPanel /> : null}
+
       <section className="flex flex-col gap-3 rounded-xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-dark text-accent shadow-sm ring-4 ring-primary-dark/10">
@@ -117,8 +119,6 @@ export default function AdminLoansPage() {
       {tab === 'products' ? (
         <AdminLoanProductsTab />
       ) : (
-        <>
-        <LoanApplicationFormPanel />
         <section className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-[0_4px_24px_-10px_rgba(21,42,30,0.1)]">
           {isLoading ? (
             <div className="flex justify-center py-14">
@@ -288,7 +288,6 @@ export default function AdminLoansPage() {
             </div>
           ) : null}
         </section>
-        </>
       )}
     </div>
   )

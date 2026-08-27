@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -76,6 +76,16 @@ export default function CreateNewPasswordPage() {
           <p className="text-xs leading-relaxed text-gray-600">Use a unique passphrase you don&apos;t reuse on other sites.</p>
         </div>
 
+        {!token ? (
+          <p className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+            This reset link is missing or invalid.{' '}
+            <Link to="/auth/forgot-password" className="font-semibold underline">
+              Request a new one
+            </Link>
+            .
+          </p>
+        ) : null}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <PasswordInput
@@ -93,7 +103,7 @@ export default function CreateNewPasswordPage() {
             {...register('new_password_confirm')}
           />
 
-          <button type="submit" disabled={loading} className="btn-primary mt-1 flex w-full items-center justify-center gap-2">
+          <button type="submit" disabled={loading || !token} className="btn-primary mt-1 flex w-full items-center justify-center gap-2">
             {loading ? <Spinner size="sm" className="border-white border-t-white/30" /> : null}
             Reset password
           </button>

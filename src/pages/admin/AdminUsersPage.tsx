@@ -376,6 +376,12 @@ export default function AdminUsersPage() {
     is_active: true,
     compliance_fees_exempt: false,
   })
+  const [passwordForm, setPasswordForm] = useState({
+    new_password: '',
+    new_password_confirm: '',
+    send_email: false,
+  })
+  const [passwordSectionOpen, setPasswordSectionOpen] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
@@ -481,6 +487,32 @@ export default function AdminUsersPage() {
     onError: (err: unknown) => toast.error(apiDetail(err) || 'Could not update user.'),
   })
 
+  const setPasswordMutation = useMutation({
+    mutationFn: () => {
+      if (!editUser) throw new Error('No user')
+      return adminApi.setUserPassword(editUser.id, {
+        new_password: passwordForm.new_password,
+        new_password_confirm: passwordForm.new_password_confirm,
+        send_email: passwordForm.send_email,
+      })
+    },
+    onSuccess: (res) => {
+      setPasswordForm({ new_password: '', new_password_confirm: '', send_email: false })
+      const emailed = (res.data as { email_queued?: boolean })?.email_queued
+      toast.success(emailed ? 'Password updated and emailed to the user.' : 'Password updated.')
+    },
+    onError: (err: unknown) => toast.error(apiDetail(err) || 'Could not update password.'),
+  })
+
+  const sendResetMutation = useMutation({
+    mutationFn: () => {
+      if (!editUser) throw new Error('No user')
+      return adminApi.sendPasswordReset(editUser.id)
+    },
+    onSuccess: () => toast.success('Password reset link sent to the user email.'),
+    onError: (err: unknown) => toast.error(apiDetail(err) || 'Could not send reset link.'),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: () => {
       if (!deleteUser) throw new Error('No user')
@@ -514,6 +546,8 @@ export default function AdminUsersPage() {
       is_active: d.is_active,
       compliance_fees_exempt: Boolean(d.compliance_fees_exempt),
     })
+    setPasswordForm({ new_password: '', new_password_confirm: '', send_email: false })
+    setPasswordSectionOpen(false)
   }, [editUser, editDetail])
 
   const pickerOpen = createOpen || (!!editUser && editUser.role !== 'CUSTOMER')
@@ -547,6 +581,8 @@ export default function AdminUsersPage() {
     impersonateMutation.isPending ||
     createMutation.isPending ||
     updateMutation.isPending ||
+    setPasswordMutation.isPending ||
+    sendResetMutation.isPending ||
     deleteMutation.isPending
 
   const isStaffUser = (role: string) => role !== 'CUSTOMER'
@@ -1159,6 +1195,84 @@ export default function AdminUsersPage() {
               />
               Active account
             </label>
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-center justify-between gap-2 text-left"
+                aria-expanded={passwordSectionOpen}
+                onClick={() => setPasswordSectionOpen((open) => !open)}
+              >
+                <span>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-gray-500">Password</span>
+                  {!passwordSectionOpen ? (
+                    <span className="mt-0.5 block text-xs text-gray-500">Reset password or send a reset link to the user</span>
+                  ) : null}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={cn('shrink-0 text-gray-400 transition-transform', passwordSectionOpen && 'rotate-180')}
+                  aria-hidden
+                />
+              </button>
+              {passwordSectionOpen ? (
+                <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                  <div>
+                    <FieldLabel>New password</FieldLabel>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      className="input-field w-full text-sm"
+                      value={passwordForm.new_password}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, new_password: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Confirm new password</FieldLabel>
+                    <input
+                      type="password"
+                      autoComplete="new-password"
+                      className="input-field w-full text-sm"
+                      value={passwordForm.new_password_confirm}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, new_password_confirm: e.target.value }))}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={passwordForm.send_email}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, send_email: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary-dark"
+                    />
+                    Email the new password to the user
+                  </label>
+                  <button
+                    type="button"
+                    className="btn-outline w-full cursor-pointer py-2.5 text-sm font-semibold text-primary-dark hover:border-primary-dark/30 hover:bg-primary-dark/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={
+                      setPasswordMutation.isPending ||
+                      !passwordForm.new_password ||
+                      passwordForm.new_password !== passwordForm.new_password_confirm
+                    }
+                    onClick={() => setPasswordMutation.mutate()}
+                  >
+                    {setPasswordMutation.isPending ? 'Updating…' : 'Update password'}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="h-px flex-1 bg-gray-200" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">or</span>
+                    <span className="h-px flex-1 bg-gray-200" />
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full cursor-pointer py-1 text-center text-sm font-semibold text-primary-dark underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={sendResetMutation.isPending || !editUser.is_active}
+                    onClick={() => sendResetMutation.mutate()}
+                  >
+                    {sendResetMutation.isPending ? 'Sending…' : 'Send a reset link instead'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
             {editUser.role === 'CUSTOMER' ? (
               <div className="rounded-xl border border-gray-100 bg-gray-50/40 px-1">
                 <SettingsSettingRow

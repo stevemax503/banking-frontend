@@ -28,6 +28,12 @@ export const adminApi = {
     apiClient.post<{ access: string; refresh: string; user: Record<string, unknown> }>(
       `/api/admin-portal/users/${userId}/impersonate/`,
     ),
+  setUserPassword: (
+    userId: string,
+    data: { new_password: string; new_password_confirm: string; send_email?: boolean },
+  ) => apiClient.post(`/api/admin-portal/users/${userId}/set-password/`, data),
+  sendPasswordReset: (userId: string) =>
+    apiClient.post(`/api/admin-portal/users/${userId}/send-password-reset/`),
 
   emailOtps: (params?: Record<string, string>) =>
     apiClient.get('/api/admin-portal/email-otps/', { params }),

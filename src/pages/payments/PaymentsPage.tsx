@@ -18,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { accountsApi } from '@/api/accounts'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 import { paymentsApi } from '@/api/payments'
 import { Input } from '@/components/forms/Input'
 import { StyledSelect } from '@/components/forms/StyledSelect'
@@ -225,7 +226,10 @@ export default function PaymentsPage() {
           ) : accounts.length === 0 ? (
             <p className="py-8 text-center text-sm text-gray-500">Open an account to pay bills.</p>
           ) : (
-            <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-6">
+            <form onSubmit={handleSubmit((d) => {
+              if (!guardUnlockedAccount()) return
+              mutation.mutate(d)
+            })} className="space-y-6">
               <StyledSelect label="Pay from" error={errors.account_id?.message} {...register('account_id')}>
                 <option value="">Select account</option>
                 {accounts.map((a: { id: string; account_number: string; iban?: string | null; account_type: string; balance: string }) => (

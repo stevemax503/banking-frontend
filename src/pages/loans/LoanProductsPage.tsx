@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import LoanProductDetailModal from '@/components/loans/LoanProductDetailModal'
 import { loansApi } from '@/api/loans'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/utils/cn'
 import { formatDisplayCurrency, formatDate } from '@/utils/format'
@@ -315,6 +316,7 @@ export default function LoanProductsPage() {
         onClose={() => setModalCard(null)}
         onApply={() => {
           if (!modalCard) return
+          if (!guardUnlockedAccount()) return
           setModalCard(null)
           navigate(`/loans/apply/${modalCard.apiProduct.id}`)
         }}

@@ -21,6 +21,7 @@ import { cn } from '@/utils/cn'
 import { DISPLAY_CURRENCY_SYMBOL } from '@/utils/format'
 import { formatAccountIdentifierDisplay, maskAccountIdentifier } from '@/lib/uaeAccount'
 import { formatAccountTypeLabel } from '@/lib/accountDisplay'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 import { cardTierLabel, cardVariantFromTier } from '@/lib/cardTier'
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -227,6 +228,7 @@ export default function CardsPage() {
                                 disabled={requestMutation.isPending}
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  if (!guardUnlockedAccount()) return
                                   requestMutation.mutate(acc.id)
                                 }}
                                 className="btn-primary py-1.5 text-[11px] uppercase tracking-wide disabled:opacity-50"
@@ -239,6 +241,7 @@ export default function CardsPage() {
                                 disabled={payMutation.isPending}
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  if (!guardUnlockedAccount()) return
                                   payMutation.mutate(iss!.id)
                                 }}
                                 className="rounded-full bg-accent px-4 py-1.5 text-[11px] font-bold uppercase text-primary-dark disabled:opacity-50"
@@ -252,6 +255,7 @@ export default function CardsPage() {
                                 disabled={replacementMutation.isPending}
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  if (!guardUnlockedAccount()) return
                                   setReplacementModal({
                                     accountId: acc.id,
                                     issueFee: row.product?.issue_fee || iss!.issue_fee || '0',
@@ -374,6 +378,7 @@ export default function CardsPage() {
                 currencySymbol={DISPLAY_CURRENCY_SYMBOL}
                 issueFee={replacementModal?.issueFee ?? '0'}
                 onConfirm={(terminatePrevious) => {
+                  if (!guardUnlockedAccount()) return
                   if (replacementModal) {
                     replacementMutation.mutate({ accountId: replacementModal.accountId, terminatePrevious })
                   }

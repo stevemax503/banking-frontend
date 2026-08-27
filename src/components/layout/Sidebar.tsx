@@ -7,6 +7,7 @@ import {
 import { cn } from '@/utils/cn'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore, useIsImpersonating } from '@/store/authStore'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 import SafaPayLogo from '@/components/brand/SafaPayLogo'
 
 const navItems = [
@@ -114,6 +115,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
         <button
           type="button"
           onClick={() => {
+            if (!guardUnlockedAccount()) return
             onCloseMobile?.()
             navigate('/transactions/transfer')
           }}

@@ -11,6 +11,7 @@ import Spinner from '@/components/ui/Spinner'
 import { formatAccountTypeLabel } from '@/lib/accountDisplay'
 import { formatDisplayCurrency } from '@/utils/format'
 import { accountIdentifierLastFour, formatAccountIdentifierDisplay } from '@/lib/uaeAccount'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 
 type PayoutContext = {
   requires_compliance: boolean
@@ -134,6 +135,7 @@ export default function LoanApplicationPayoutPage() {
   }
 
   const handleReleaseFunds = async () => {
+    if (!guardUnlockedAccount()) return
     if (!disburseAccountId) {
       toast.error('Select a receiving account first.')
       return

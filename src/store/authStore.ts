@@ -10,6 +10,7 @@ export interface User {
   role: string
   kyc_status: string
   is_mfa_enabled: boolean
+  is_locked?: boolean
   profile_picture: string | null
   requires_profile_setup?: boolean
   profile_setup_completed?: boolean

@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Home, ArrowLeftRight, Headphones, MessageCircle } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useLiveChat } from '@/contexts/LiveChatContext'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 
 export default function MobileBottomNav() {
   const { setOpen } = useLiveChat()
@@ -39,7 +40,13 @@ export default function MobileBottomNav() {
             </>
           )}
         </NavLink>
-        <NavLink to="/transactions/transfer" className={navLinkClass}>
+        <NavLink
+          to="/transactions/transfer"
+          className={navLinkClass}
+          onClick={(e) => {
+            if (!guardUnlockedAccount()) e.preventDefault()
+          }}
+        >
           {({ isActive }) => (
             <>
               <ArrowLeftRight size={22} strokeWidth={isActive ? 2.25 : 2} />

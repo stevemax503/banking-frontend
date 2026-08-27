@@ -627,7 +627,7 @@ export default function AdminUsersPage() {
             label="Dashboard"
             icon={LayoutDashboard}
             variant="primary"
-            disabled={busy || u.is_locked || !u.is_active}
+            disabled={busy || !u.is_active}
             className={isSuperAdmin ? undefined : 'col-span-2'}
             onClick={() => impersonateMutation.mutate(u.id)}
           />
@@ -912,7 +912,7 @@ export default function AdminUsersPage() {
                         {u.role === 'CUSTOMER' && (
                           <IconAction
                             label="View customer dashboard"
-                            disabled={busy || u.is_locked || !u.is_active}
+                            disabled={busy || !u.is_active}
                             onClick={() => impersonateMutation.mutate(u.id)}
                             className="hover:border-primary-dark/30 hover:bg-primary-dark/5 hover:text-primary-dark"
                           >

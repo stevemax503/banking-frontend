@@ -29,6 +29,7 @@ import type { TransactionListItem } from '@/utils/transactionDisplay'
 import ComplianceFeesModal from '@/components/transactions/ComplianceFeesModal'
 import TransferSuccessReceipt from '@/components/transactions/TransferSuccessReceipt'
 import { asTransactionListItem, buildTransferReceiptFromForm } from '@/lib/transactionApiMappers'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 import {
   TRANSFER_UI_MOCK,
   MOCK_ACCOUNTS,
@@ -613,6 +614,7 @@ export default function TransferPage() {
   usePageChrome(transferChrome)
 
   const confirmTransfer = transferForm.handleSubmit((d) => {
+    if (!guardUnlockedAccount()) return
     if (!regulatedSessionIdempotencyRef.current) {
       regulatedSessionIdempotencyRef.current = uuidv4()
     }

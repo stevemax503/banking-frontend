@@ -8,6 +8,7 @@ import PageToolbar from './PageToolbar'
 import PageAtmosphere from './PageAtmosphere'
 import MobileBottomNav from './MobileBottomNav'
 import NotificationsModal from '@/components/notifications/NotificationsModal'
+import AccountLockedBanner from './AccountLockedBanner'
 
 const NO_BACK_PATHS = new Set(['/dashboard'])
 
@@ -48,6 +49,7 @@ function AppMain({
             onBack={chromeOverride?.onBack}
             onOpenNotifications={onOpenNotifications}
           />
+          <AccountLockedBanner />
           <div className={cn(isDashboard && 'flex min-h-0 flex-1 flex-col')}>
             <Outlet />
           </div>

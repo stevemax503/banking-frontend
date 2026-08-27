@@ -1,4 +1,5 @@
 import axios from 'axios'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '@/store/authStore'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -75,6 +76,15 @@ apiClient.interceptors.response.use(
       } finally {
         isRefreshing = false
       }
+    }
+
+    const detail = error.response?.data?.detail
+    if (
+      error.response?.status === 403 &&
+      typeof detail === 'string' &&
+      detail.toLowerCase().includes('account is locked')
+    ) {
+      toast.error(detail)
     }
 
     return Promise.reject(error)

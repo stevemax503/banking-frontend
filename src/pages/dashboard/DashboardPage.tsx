@@ -20,6 +20,7 @@ import { useIsLgUp } from '@/hooks/useMediaQuery'
 import { fromApiListResponse } from '@/lib/apiList'
 import { type TransactionListItem, isCreditForUser } from '@/utils/transactionDisplay'
 import { accountIdentifierLastFour, formatAccountIdentifierDisplay, maskAccountIdentifier } from '@/lib/uaeAccount'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 
 const BALANCE_VISIBLE_KEY = 'banking-dashboard-balance-visible'
 const SELECTED_ACCOUNT_KEY = 'banking-dashboard-selected-account'
@@ -301,7 +302,10 @@ export default function DashboardPage() {
           >
             <button
               type="button"
-              onClick={() => navigate('/transactions/transfer')}
+              onClick={() => {
+                if (!guardUnlockedAccount()) return
+                navigate('/transactions/transfer')
+              }}
               className="inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs font-semibold text-primary-dark shadow-sm transition-colors hover:bg-accent-dark sm:text-sm sm:px-5 sm:py-2.5"
             >
               Send Money <ArrowUpRight size={14} />

@@ -8,6 +8,7 @@ import type { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
 import { FileText, Landmark } from 'lucide-react'
 import { loansApi } from '@/api/loans'
+import { guardUnlockedAccount } from '@/lib/accountLock'
 import { Input } from '@/components/forms/Input'
 import Spinner from '@/components/ui/Spinner'
 import { formatDisplayCurrency } from '@/utils/format'
@@ -364,7 +365,10 @@ export default function LoanApplyPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-5 p-4 sm:p-6">
+        <form onSubmit={handleSubmit((d) => {
+          if (!guardUnlockedAccount()) return
+          mutation.mutate(d)
+        })} className="space-y-5 p-4 sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               label="Loan amount"

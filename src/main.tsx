@@ -4,7 +4,10 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
 import { queryClient } from './queryClient'
+import { installGoogleTranslateDomGuard } from './lib/domTranslateGuard'
 import './styles/globals.css'
+
+installGoogleTranslateDomGuard()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

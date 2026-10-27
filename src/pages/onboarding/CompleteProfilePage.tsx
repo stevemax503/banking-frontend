@@ -250,16 +250,38 @@ function FormSection({
   )
 }
 
-export default function CompleteProfilePage() {
+function ProfileStatus({
+  message,
+  action,
+}: {
+  message: string
+  action?: { label: string; onClick: () => void }
+}) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f4f5f7] px-4">
+      <div className="flex max-w-sm flex-col items-center gap-3 text-center">
+        {action ? null : (
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary-dark border-t-transparent" />
+        )}
+        <p className="text-sm text-gray-600">{message}</p>
+        {action ? (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="mt-1 rounded-full bg-primary-dark px-5 py-2.5 text-sm font-semibold text-white"
+          >
+            {action.label}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function CompleteProfileForm({ profile }: { profile: ProfileResponse }) {
   const { logout, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-
-  const { data: profileRes, isLoading } = useQuery({
-    queryKey: ['profile'],
-    queryFn: () => authApi.getProfile(),
-  })
-  const profile = profileRes?.data as ProfileResponse | undefined
 
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -278,7 +300,7 @@ export default function CompleteProfilePage() {
   const [idDocumentNumber, setIdDocumentNumber] = useState('')
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null)
   const [photoObjectUrl, setPhotoObjectUrl] = useState<string | null>(null)
-  const [isLeaving, setIsLeaving] = useState(false)
+  const [openingDashboard, setOpeningDashboard] = useState(false)
 
   const { data: csc, isLoading: cscLoading } = useLocationDataset()
   const countryOptions = useCountryOptions(csc)
@@ -310,22 +332,6 @@ export default function CompleteProfilePage() {
     setProfilePictureFile(null)
   }, [profile])
 
-  const setupComplete = profile?.requires_profile_setup !== true
-
-  useEffect(() => {
-    if (!setupComplete || isLoading || isLeaving) return
-    let cancelled = false
-    setIsLeaving(true)
-    void (async () => {
-      const ok = await refreshProfile()
-      if (!cancelled && ok) navigate('/dashboard', { replace: true })
-      else if (!cancelled) setIsLeaving(false)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [setupComplete, isLoading, isLeaving, navigate, refreshProfile])
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       const addressStr = joinAddress(addr, countryDisplayName(csc, addr.country) || addr.country)
@@ -350,7 +356,7 @@ export default function CompleteProfilePage() {
       return authApi.updateProfile(basePayload)
     },
     onSuccess: async () => {
-      setIsLeaving(true)
+      setOpeningDashboard(true)
       toast.success('Profile complete. Welcome to SafaPay Bank.')
       setProfilePictureFile(null)
       try {
@@ -358,20 +364,20 @@ export default function CompleteProfilePage() {
         queryClient.setQueryData(['profile'], res)
         const refreshed = await refreshProfile()
         if (!refreshed) {
-          setIsLeaving(false)
+          setOpeningDashboard(false)
           toast.error('Profile saved, but we could not refresh your session. Please reload the page.')
           return
         }
         navigate('/dashboard', { replace: true })
       } catch {
-        setIsLeaving(false)
+        setOpeningDashboard(false)
         toast.error('Profile saved, but we could not open your dashboard. Please reload the page.')
       }
     },
     onError: () => toast.error('Could not save profile.'),
   })
 
-  const hasPhoto = Boolean(profilePictureFile || profile?.profile_picture)
+  const hasPhoto = Boolean(profilePictureFile || profile.profile_picture)
 
   const stepDone = {
     identity: Boolean(intendedAccountType && idDocumentType && idDocumentNumber.trim() && hasPhoto),
@@ -387,17 +393,8 @@ export default function CompleteProfilePage() {
     return true
   }
 
-  if (isLoading || !profile || isLeaving || setupComplete) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f5f7]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary-dark border-t-transparent" />
-          <p className="text-sm text-gray-500">
-            {isLeaving || setupComplete ? 'Opening your dashboard…' : 'Loading your profile…'}
-          </p>
-        </div>
-      </div>
-    )
+  if (openingDashboard) {
+    return <ProfileStatus message="Opening your dashboard…" />
   }
 
   const initials = (fullName || profile.full_name || '?')
@@ -703,4 +700,61 @@ export default function CompleteProfilePage() {
       </div>
     </div>
   )
+}
+
+export default function CompleteProfilePage() {
+  const { refreshProfile } = useAuth()
+  const navigate = useNavigate()
+  const [redirectAttempt, setRedirectAttempt] = useState(0)
+  const [redirectFailed, setRedirectFailed] = useState(false)
+  const profileQuery = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => authApi.getProfile(),
+  })
+  const profile = profileQuery.data?.data as ProfileResponse | undefined
+  // A missing profile is not "setup finished". Only a loaded profile may leave this page.
+  const setupComplete = Boolean(profile) && profile?.requires_profile_setup !== true
+
+  useEffect(() => {
+    if (!setupComplete) return
+    let cancelled = false
+    setRedirectFailed(false)
+    void (async () => {
+      const ok = await refreshProfile()
+      if (cancelled) return
+      if (ok) navigate('/dashboard', { replace: true })
+      else setRedirectFailed(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [setupComplete, redirectAttempt, navigate, refreshProfile])
+
+  if (profileQuery.isError && !profile) {
+    return (
+      <ProfileStatus
+        message="We couldn't load your profile. Check your connection and try again."
+        action={{ label: 'Try again', onClick: () => void profileQuery.refetch() }}
+      />
+    )
+  }
+
+  if (!profile || profileQuery.isLoading) {
+    return <ProfileStatus message="Loading your profile…" />
+  }
+
+  if (setupComplete && redirectFailed) {
+    return (
+      <ProfileStatus
+        message="Your profile is ready, but we couldn't open the dashboard."
+        action={{ label: 'Try again', onClick: () => setRedirectAttempt((n) => n + 1) }}
+      />
+    )
+  }
+
+  if (setupComplete) {
+    return <ProfileStatus message="Opening your dashboard…" />
+  }
+
+  return <CompleteProfileForm profile={profile} />
 }
